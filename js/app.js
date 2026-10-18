@@ -1,4 +1,4 @@
-/* Démarrage : branche la barre du haut puis affiche l'écran demandé. */
+/* Démarrage : branche la barre du haut, connecte l'utilisateur, puis affiche l'écran demandé. */
 (function (EV) {
   'use strict';
 
@@ -29,6 +29,25 @@
     });
   }
 
+  // Si cet appareil contient des voitures saisies avant le passage en ligne, propose de les copier.
+  async function proposerReprise() {
+    const anciennes = await EV.stockage.lireAnciennesDonnees();
+    if (!anciennes || !(await EV.stockage.espaceVide())) return;
+
+    const nombre = anciennes.voitures.length;
+    const quoi = nombre > 0
+      ? `${nombre} voiture${nombre > 1 ? 's' : ''} enregistrée${nombre > 1 ? 's' : ''}`
+      : 'des données enregistrées';
+    const accepte = await ui.fenetre({
+      titre: 'Reprendre les données de cet appareil ?',
+      contenu: `<p class="fenetre-texte">Cet appareil contient ${quoi} avant le passage en ligne. Voulez-vous les copier dans votre espace ? Vous les retrouverez ensuite sur tous vos appareils.</p>`,
+      libelleValider: 'Copier mes données'
+    });
+    if (!accepte) return;
+    await EV.stockage.importer(anciennes);
+    ui.toast('Vos données ont été copiées dans votre espace en ligne.');
+  }
+
   async function demarrer() {
     ui.remplirIcones();
     theme.appliquer();
@@ -42,9 +61,11 @@
     });
     brancherRecherche();
 
-    const donneesConservees = await EV.stockage.demarrer();
+    const utilisateur = await EV.compte.demarrer();
+    const donneesConservees = await EV.stockage.demarrer(utilisateur.uid);
     document.getElementById('alerte-stockage').hidden = donneesConservees;
 
+    await proposerReprise();
     routeur.afficher();
   }
 

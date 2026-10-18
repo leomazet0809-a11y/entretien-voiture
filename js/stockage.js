@@ -1,58 +1,46 @@
-/* Stockage des données dans le navigateur (IndexedDB).
-   C'est le seul fichier à adapter le jour où les données iront dans Google Drive. */
+/* Stockage des données en ligne, dans Cloud Firestore (Firebase).
+   Chaque utilisateur a son propre espace : users/{uid}/voitures, users/{uid}/entretiens…
+   Une copie est gardée sur l'appareil : l'application reste utilisable sans réseau
+   et envoie les modifications dès que la connexion revient.
+   Les écrans utilisent toujours les mêmes fonctions qu'avec l'ancien stockage local. */
 (function (EV) {
   'use strict';
 
-  const NOM_BASE = 'entretien-voiture';
-  const VERSION = 1;
   const TABLES = ['voitures', 'categories', 'entretiens', 'documents', 'releves'];
   const TABLES_PAR_VOITURE = ['entretiens', 'documents', 'releves'];
+  const NOM_ANCIENNE_BASE = 'entretien-voiture'; // base IndexedDB d'avant le passage en ligne
+  const TAILLE_LOT = 400;                        // Firestore accepte 500 écritures par lot
 
-  let base = null;     // base IndexedDB ouverte
-  let memoire = null;  // repli en mémoire vive si le navigateur refuse IndexedDB
+  let db = null;
+  let espace = null; // document users/{uid}
 
-  function attendre(requete) {
-    return new Promise((ok, ko) => {
-      requete.onsuccess = () => ok(requete.result);
-      requete.onerror = () => ko(requete.error);
-    });
+  // Les écrans peuvent appeler le stockage avant la fin de la connexion : ils attendent qu'il soit prêt.
+  let signalerPret;
+  const pret = new Promise((ok) => { signalerPret = ok; });
+
+  function table(nom) {
+    return espace.collection(nom);
   }
 
-  function finTransaction(transaction) {
-    return new Promise((ok, ko) => {
-      transaction.oncomplete = () => ok();
-      transaction.onerror = () => ko(transaction.error);
-      transaction.onabort = () => ko(transaction.error);
-    });
+  // Les écritures partent en arrière-plan : l'écran n'attend pas le réseau.
+  // En cas de refus du serveur, on prévient l'utilisateur.
+  function signalerEchec(erreur) {
+    console.error(erreur);
+    EV.ui.toast("Une modification n'a pas pu être enregistrée en ligne. Vérifiez votre connexion, puis réessayez.");
   }
 
-  function ouvrirBase() {
-    return new Promise((ok, ko) => {
-      const requete = indexedDB.open(NOM_BASE, VERSION);
-      requete.onupgradeneeded = () => {
-        const db = requete.result;
-        db.createObjectStore('voitures', { keyPath: 'id' });
-        db.createObjectStore('categories', { keyPath: 'id' });
-        db.createObjectStore('entretiens', { keyPath: 'id' }).createIndex('voitureId', 'voitureId');
-        db.createObjectStore('releves', { keyPath: 'id' }).createIndex('voitureId', 'voitureId');
-        const documents = db.createObjectStore('documents', { keyPath: 'id' });
-        documents.createIndex('voitureId', 'voitureId');
-        documents.createIndex('entretienId', 'entretienId');
-      };
-      requete.onsuccess = () => ok(requete.result);
-      requete.onerror = () => ko(requete.error);
-    });
-  }
-
-  // Renvoie true si les données seront conservées, false si elles ne vivent que le temps de la visite.
-  async function demarrer() {
+  async function demarrer(uid) {
+    db = firebase.firestore();
+    db.settings({ ignoreUndefinedProperties: true });
     try {
-      base = await ouvrirBase();
-      return true;
+      await db.enablePersistence({ synchronizeTabs: true });
     } catch (e) {
-      memoire = Object.fromEntries(TABLES.map((table) => [table, new Map()]));
-      return false;
+      // Navigation privée ou navigateur ancien : tout fonctionne, mais sans copie hors ligne.
+      console.warn('Copie hors ligne indisponible :', e.code || e);
     }
+    espace = db.collection('users').doc(uid);
+    signalerPret();
+    return true;
   }
 
   function nouvelId() {
@@ -61,72 +49,141 @@
     return Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
   }
 
-  async function tous(table) {
-    if (memoire) return [...memoire[table].values()].map((o) => structuredClone(o));
-    return attendre(base.transaction(table).objectStore(table).getAll());
+  function contenus(cliche) {
+    return cliche.docs.map((d) => d.data());
   }
 
-  async function lire(table, id) {
-    if (memoire) {
-      const objet = memoire[table].get(id);
-      return objet ? structuredClone(objet) : undefined;
-    }
-    return attendre(base.transaction(table).objectStore(table).get(id));
+  async function tous(nom) {
+    await pret;
+    return contenus(await table(nom).get());
   }
 
-  async function parVoiture(table, voitureId) {
-    if (memoire) return (await tous(table)).filter((o) => o.voitureId === voitureId);
-    return attendre(base.transaction(table).objectStore(table).index('voitureId').getAll(voitureId));
+  async function lire(nom, id) {
+    await pret;
+    const doc = await table(nom).doc(id).get();
+    return doc.exists ? doc.data() : undefined;
+  }
+
+  async function parVoiture(nom, voitureId) {
+    await pret;
+    return contenus(await table(nom).where('voitureId', '==', voitureId).get());
   }
 
   // Ajoute ou met à jour un objet ; lui donne un identifiant et ses dates de création et de modification.
-  async function enregistrer(table, objet) {
+  async function enregistrer(nom, objet) {
+    await pret;
     const maintenant = new Date().toISOString();
     const complet = { ...objet, id: objet.id || nouvelId(), creeLe: objet.creeLe || maintenant, modifieLe: maintenant };
-    if (memoire) {
-      memoire[table].set(complet.id, structuredClone(complet));
-    } else {
-      const transaction = base.transaction(table, 'readwrite');
-      transaction.objectStore(table).put(complet);
-      await finTransaction(transaction);
-    }
+    table(nom).doc(complet.id).set(complet).catch(signalerEchec);
     return complet;
   }
 
-  async function supprimer(table, id) {
-    if (memoire) {
-      memoire[table].delete(id);
-      return;
-    }
-    const transaction = base.transaction(table, 'readwrite');
-    transaction.objectStore(table).delete(id);
-    await finTransaction(transaction);
+  async function supprimer(nom, id) {
+    await pret;
+    table(nom).doc(id).delete().catch(signalerEchec);
   }
 
-  // Supprime une voiture et tout ce qui lui est rattaché, en une seule opération.
+  // Applique une liste d'opérations ({ lot } => …) par lots de TAILLE_LOT.
+  function ecrireParLots(operations) {
+    const envois = [];
+    for (let i = 0; i < operations.length; i += TAILLE_LOT) {
+      const lot = db.batch();
+      operations.slice(i, i + TAILLE_LOT).forEach((operation) => operation(lot));
+      envois.push(lot.commit());
+    }
+    return Promise.all(envois);
+  }
+
+  // Supprime une voiture et tout ce qui lui est rattaché.
   async function supprimerVoiture(id) {
-    if (memoire) {
-      memoire.voitures.delete(id);
-      TABLES_PAR_VOITURE.forEach((table) => {
-        memoire[table].forEach((objet, cle) => {
-          if (objet.voitureId === id) memoire[table].delete(cle);
-        });
-      });
-      return;
+    await pret;
+    const references = [table('voitures').doc(id)];
+    for (const nom of TABLES_PAR_VOITURE) {
+      const cliche = await table(nom).where('voitureId', '==', id).get();
+      cliche.forEach((doc) => references.push(doc.ref));
     }
-    const transaction = base.transaction(['voitures', ...TABLES_PAR_VOITURE], 'readwrite');
-    transaction.objectStore('voitures').delete(id);
-    TABLES_PAR_VOITURE.forEach((table) => {
-      const magasin = transaction.objectStore(table);
-      const curseur = magasin.index('voitureId').openKeyCursor(IDBKeyRange.only(id));
-      curseur.onsuccess = () => {
-        if (!curseur.result) return;
-        magasin.delete(curseur.result.primaryKey);
-        curseur.result.continue();
-      };
-    });
-    await finTransaction(transaction);
+    ecrireParLots(references.map((ref) => (lot) => lot.delete(ref))).catch(signalerEchec);
   }
 
-  EV.stockage = { demarrer, tous, lire, parVoiture, enregistrer, supprimer, supprimerVoiture };
+  // Avant la déconnexion : envoie ce qui reste en attente, puis efface la copie gardée sur l'appareil.
+  async function arreter() {
+    if (!db) return;
+    try {
+      await Promise.race([db.waitForPendingWrites(), new Promise((ok) => setTimeout(ok, 5000))]);
+      await db.terminate();
+      await db.clearPersistence();
+    } catch (e) {
+      console.warn("La copie locale n'a pas pu être effacée :", e);
+    }
+  }
+
+  /* ---------- Reprise des données enregistrées sur l'appareil avant le passage en ligne ---------- */
+
+  // Ouvre l'ancienne base sans la créer si elle n'existe pas.
+  function ouvrirAncienneBase() {
+    return new Promise((ok) => {
+      let requete;
+      try {
+        requete = indexedDB.open(NOM_ANCIENNE_BASE);
+      } catch (e) {
+        ok(null);
+        return;
+      }
+      requete.onupgradeneeded = () => requete.transaction.abort(); // n'existait pas : on annule sa création
+      requete.onsuccess = () => ok(requete.result);
+      requete.onerror = (e) => { e.preventDefault(); ok(null); };
+      requete.onblocked = () => ok(null);
+    });
+  }
+
+  function attendre(requete) {
+    return new Promise((ok, ko) => {
+      requete.onsuccess = () => ok(requete.result);
+      requete.onerror = () => ko(requete.error);
+    });
+  }
+
+  // Renvoie { voitures: [...], ... } ou null s'il n'y a rien à reprendre.
+  async function lireAnciennesDonnees() {
+    const ancienne = await ouvrirAncienneBase();
+    if (!ancienne) return null;
+    try {
+      const donnees = {};
+      let total = 0;
+      for (const nom of TABLES) {
+        donnees[nom] = ancienne.objectStoreNames.contains(nom)
+          ? await attendre(ancienne.transaction(nom).objectStore(nom).getAll())
+          : [];
+        total += donnees[nom].length;
+      }
+      return total > 0 ? donnees : null;
+    } catch (e) {
+      console.warn("L'ancienne base n'a pas pu être lue :", e);
+      return null;
+    } finally {
+      ancienne.close();
+    }
+  }
+
+  // true si l'espace en ligne ne contient encore aucune voiture.
+  async function espaceVide() {
+    await pret;
+    return (await table('voitures').limit(1).get()).empty;
+  }
+
+  // Copie les anciennes données en gardant leurs identifiants (relancer l'import ne crée pas de doublons).
+  async function importer(donnees) {
+    await pret;
+    const operations = [];
+    Object.entries(donnees).forEach(([nom, objets]) => {
+      objets.forEach((objet) => operations.push((lot) => lot.set(table(nom).doc(objet.id), objet)));
+    });
+    ecrireParLots(operations).catch(signalerEchec);
+    return operations.length;
+  }
+
+  EV.stockage = {
+    demarrer, tous, lire, parVoiture, enregistrer, supprimer, supprimerVoiture, arreter,
+    lireAnciennesDonnees, espaceVide, importer
+  };
 })(window.EV = window.EV || {});

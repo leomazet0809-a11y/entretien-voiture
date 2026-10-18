@@ -913,3 +913,9 @@ body:has(.fenetre[open]) { overflow: hidden; }
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Avant la connexion : seuls le logo et le bouton de thème restent dans la barre du haut */
+.non-connecte .recherche,
+.non-connecte #bouton-ajouter,
+.non-connecte #bouton-km,
+.non-connecte #lien-parametres { display: none; }

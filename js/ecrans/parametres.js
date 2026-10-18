@@ -1,4 +1,4 @@
-/* Écran Paramètres : apparence, catégories d'entretien et sauvegarde. */
+/* Écran Paramètres : compte, apparence, catégories d'entretien et sauvegarde. */
 (function (EV) {
   'use strict';
 
@@ -16,6 +16,16 @@
       </div>
 
       <div class="sections">
+        <section class="section" aria-labelledby="titre-compte">
+          <div class="ligne-reglage">
+            <div class="reglage-texte">
+              <h2 id="titre-compte">Compte</h2>
+              <p>Connecté avec ${EV.ui.echapper(EV.compte.email())}. Vos données sont enregistrées en ligne et identiques sur tous vos appareils.</p>
+            </div>
+            <button class="bouton bouton-secondaire" type="button" data-deconnexion>Se déconnecter</button>
+          </div>
+        </section>
+
         <section class="section" aria-labelledby="titre-apparence">
           <div class="ligne-reglage">
             <div class="reglage-texte">
@@ -50,6 +60,7 @@
         </section>
       </div>`;
 
+    conteneur.querySelector('[data-deconnexion]').addEventListener('click', EV.compte.deconnecter);
     conteneur.querySelectorAll('[data-choix-theme]').forEach((bouton) => {
       bouton.addEventListener('click', () => EV.theme.definir(bouton.dataset.choixTheme));
     });
