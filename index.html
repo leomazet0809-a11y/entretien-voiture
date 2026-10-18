@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Entretien voiture</title>
+<meta name="theme-color" content="#F6F6F3">
+<meta name="description" content="Suivi des entretiens, du kilométrage et des factures de vos voitures.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap">
+<link rel="stylesheet" href="css/styles.css">
+<script>
+  // Applique le thème mémorisé avant l'affichage, pour éviter un flash de la mauvaise couleur.
+  try {
+    var themeMemorise = localStorage.getItem('entretien-voiture.theme');
+    if (themeMemorise === 'light' || themeMemorise === 'dark') document.documentElement.setAttribute('data-theme', themeMemorise);
+  } catch (e) { /* stockage indisponible : on suit l'appareil */ }
+</script>
+</head>
+<body>
+<header class="barre">
+  <div class="barre-interne">
+    <a class="marque" href="#" aria-label="Entretien voiture, retour à mes voitures">
+      <span class="marque-logo" data-icone="cle" aria-hidden="true"></span>
+      <span class="marque-nom">Entretien voiture</span>
+    </a>
+
+    <div class="recherche" role="search">
+      <span class="recherche-icone" data-icone="recherche" aria-hidden="true"></span>
+      <label class="masque" for="champ-recherche">Rechercher</label>
+      <input id="champ-recherche" type="search" placeholder="Rechercher partout…" autocomplete="off" enterkeyhint="search">
+      <div class="recherche-panneau" id="panneau-recherche" hidden></div>
+    </div>
+
+    <div class="actions">
+      <button class="bouton bouton-principal" id="bouton-ajouter" type="button" title="Ajouter un entretien">
+        <span data-icone="plus" aria-hidden="true"></span><span>Ajouter</span>
+      </button>
+      <button class="bouton bouton-secondaire" id="bouton-km" type="button" title="Noter le kilométrage du jour">
+        <span data-icone="compteur" aria-hidden="true"></span><span>Km</span>
+      </button>
+      <button class="bouton bouton-icone" id="bouton-theme" type="button" aria-label="Changer de thème"></button>
+      <a class="bouton bouton-icone" id="lien-parametres" href="#parametres" aria-label="Paramètres" title="Paramètres">
+        <span data-icone="reglages" aria-hidden="true"></span>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main id="contenu" class="contenu" tabindex="-1"></main>
+
+<div class="messages" id="messages" aria-live="polite"></div>
+
+<script src="js/ui.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/routeur.js"></script>
+<script src="js/ecrans/accueil.js"></script>
+<script src="js/ecrans/parametres.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
