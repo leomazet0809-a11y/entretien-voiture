@@ -21,7 +21,7 @@ Elle fonctionne sur ordinateur et sur smartphone. Les données restent sur l'app
 | 4 | Événements d'entretien et tableur de la voiture | Fait |
 | 5 | Documents joints (factures, photos) | Fait |
 | 6 | Kilométrage : bouton Km, historique, courbe | Fait |
-| 7 | Recherche dans toutes les données | À faire |
+| 7 | Recherche dans toutes les données | Fait |
 | 8 | Sauvegarde : exporter / importer | À faire |
 | 9 | Installation sur smartphone, mode hors ligne, mise en ligne | À faire |
 
@@ -42,6 +42,7 @@ js/evenements.js      règles sur les événements (vérifications, total des co
 js/documents.js       documents joints : vérification, ouverture, téléchargement
 js/kilometrage.js     relevés kilométriques : vérifications, chiffres clés
 js/graphique.js       courbe du kilométrage (SVG, sans bibliothèque)
+js/recherche.js       recherche dans toutes les données (accents et majuscules ignorés)
 js/format.js          montants, kilométrages, dates et tailles de fichiers à la française
 js/ecrans/*.js        un fichier par écran
 js/app.js             démarrage

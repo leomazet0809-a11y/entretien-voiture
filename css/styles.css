@@ -244,13 +244,127 @@ a { color: inherit; }
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  padding: 14px 16px;
+  max-height: min(70dvh, 560px);
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: var(--rayon-moyen);
   border: 1px solid var(--bordure);
   background: var(--surface);
-  color: var(--texte-2);
+  color: var(--texte);
   box-shadow: var(--ombre-forte);
   font-size: 0.9375rem;
+}
+
+.resultats-resume,
+.resultats-vide,
+.resultats-reste {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--texte-2);
+  font-size: 0.875rem;
+}
+
+.resultats-groupe + .resultats-groupe {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--bordure);
+}
+
+.resultats-groupe h3 {
+  margin: 0;
+  padding: 8px 10px 4px;
+  color: var(--texte-2);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.resultats-groupe h3 span {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.resultats-groupe ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resultat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resultat:hover,
+.resultat:focus-visible { background: var(--surface-2); }
+
+.resultat:focus-visible { outline-offset: -2px; }
+
+.resultat-icone {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-doux);
+  color: var(--accent);
+}
+
+.resultat-textes {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Titre et détail tiennent sur deux lignes au plus, sans couper au milieu sur téléphone */
+.resultat-titre,
+.resultat-detail {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.resultat-titre { font-weight: 600; }
+
+.resultat-detail {
+  color: var(--texte-2);
+  font-size: 0.875rem;
+}
+
+.resultat-plaque {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--bordure);
+  border-radius: 6px;
+  font-family: var(--police-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.recherche-panneau mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--accent-doux);
+  color: inherit;
+  font-weight: 700;
 }
 
 .actions {
