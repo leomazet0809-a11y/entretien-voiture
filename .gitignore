@@ -1,0 +1,6 @@
+# Données personnelles : ne jamais les publier dans le dépôt
+*.csv
+*.xlsx
+sauvegarde-*.json
+
+.DS_Store

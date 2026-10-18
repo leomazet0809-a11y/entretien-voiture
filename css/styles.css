@@ -1,0 +1,915 @@
+/* Entretien voiture — feuille de style
+   Mise en page : barre d'outils collante en haut, contenu centré (1120 px max),
+   une seule couleur d'accent, plaques dessinées comme de vraies plaques françaises. */
+
+:root {
+  /* Couleurs — thème clair */
+  --fond: #F6F6F3;
+  --surface: #FFFFFF;
+  --surface-2: #EEEEEA;
+  --bordure: #E2E2DC;
+  --texte: #17171A;
+  --texte-2: #66666E;
+  --accent: #4353FF;
+  --accent-survol: #3443E6;
+  --accent-texte: #FFFFFF;
+  --accent-doux: #E9EBFF;
+  --accent-anneau: rgb(67 83 255 / 0.22);
+  --danger: #D1342A;
+  --danger-survol: #B82A21;
+  --danger-texte: #FFFFFF;
+  --danger-doux: #FCE9E7;
+  --avertissement: #8A5A00;
+  --avertissement-doux: #FFF3D6;
+  --avertissement-bord: #F1D9A0;
+  --voile: rgb(14 15 18 / 0.45);
+  --barre-fond: color-mix(in srgb, var(--fond) 84%, transparent);
+  --ombre: 0 1px 2px rgb(23 23 26 / 0.05), 0 8px 24px rgb(23 23 26 / 0.06);
+  --ombre-forte: 0 2px 6px rgb(23 23 26 / 0.06), 0 16px 40px rgb(23 23 26 / 0.12);
+
+  /* Plaque d'immatriculation : un objet réel, identique dans les deux thèmes */
+  --plaque-fond: #FFFFFF;
+  --plaque-texte: #121212;
+  --plaque-cadre: #1E1E22;
+  --plaque-bande: #0B3FA8;
+  --plaque-bande-texte: #FFFFFF;
+  --plaque-etoiles: #FFD43B;
+
+  /* Typographie */
+  --police: "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --police-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Formes */
+  --rayon: 16px;
+  --rayon-moyen: 12px;
+  --largeur-max: 1120px;
+  --gouttiere-g: max(16px, env(safe-area-inset-left, 0px));
+  --gouttiere-d: max(16px, env(safe-area-inset-right, 0px));
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fond: #0E0F12;
+    --surface: #18191D;
+    --surface-2: #232429;
+    --bordure: #2D2E35;
+    --texte: #ECECEF;
+    --texte-2: #9C9CA6;
+    --accent: #7C87FF;
+    --accent-survol: #959EFF;
+    --accent-texte: #0B0D24;
+    --accent-doux: #22254A;
+    --accent-anneau: rgb(124 135 255 / 0.3);
+  --danger: #FF7A6E;
+  --danger-survol: #FF938A;
+  --danger-texte: #1F0705;
+  --danger-doux: #3A1B19;
+  --avertissement: #F2C14E;
+  --avertissement-doux: #33290F;
+  --avertissement-bord: #5A4718;
+  --voile: rgb(0 0 0 / 0.6);
+    --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+    --ombre-forte: 0 2px 6px rgb(0 0 0 / 0.35), 0 16px 40px rgb(0 0 0 / 0.45);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --fond: #0E0F12;
+  --surface: #18191D;
+  --surface-2: #232429;
+  --bordure: #2D2E35;
+  --texte: #ECECEF;
+  --texte-2: #9C9CA6;
+  --accent: #7C87FF;
+  --accent-survol: #959EFF;
+  --accent-texte: #0B0D24;
+  --accent-doux: #22254A;
+  --accent-anneau: rgb(124 135 255 / 0.3);
+  --danger: #FF7A6E;
+  --danger-survol: #FF938A;
+  --danger-texte: #1F0705;
+  --danger-doux: #3A1B19;
+  --avertissement: #F2C14E;
+  --avertissement-doux: #33290F;
+  --avertissement-bord: #5A4718;
+  --voile: rgb(0 0 0 / 0.6);
+  --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
+  --ombre-forte: 0 2px 6px rgb(0 0 0 / 0.35), 0 16px 40px rgb(0 0 0 / 0.45);
+  color-scheme: dark;
+}
+
+/* ---------- Base ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--fond);
+  color: var(--texte);
+  font-family: var(--police);
+  font-size: 1rem;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Bande sous l'encoche du téléphone, de la couleur de la barre */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0 0 auto;
+  height: env(safe-area-inset-top, 0px);
+  z-index: 30;
+  background: var(--fond);
+}
+
+h1, h2, h3 { text-wrap: balance; }
+
+a { color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.masque {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.icone { display: block; flex: none; }
+
+/* ---------- Barre du haut ---------- */
+
+.barre {
+  position: sticky;
+  top: env(safe-area-inset-top, 0px);
+  z-index: 20;
+  background: var(--barre-fond);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid var(--bordure);
+}
+
+.barre-interne {
+  max-width: var(--largeur-max);
+  margin: 0 auto;
+  padding-block: 12px;
+  padding-left: var(--gouttiere-g);
+  padding-right: var(--gouttiere-d);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas: "marque recherche actions";
+  align-items: center;
+  gap: 10px 24px;
+}
+
+.marque {
+  grid-area: marque;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  font-weight: 650;
+  font-size: 1.0625rem;
+  letter-spacing: -0.015em;
+  border-radius: var(--rayon-moyen);
+}
+
+.marque-logo {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: var(--accent-texte);
+  display: grid;
+  place-items: center;
+}
+
+.recherche {
+  grid-area: recherche;
+  position: relative;
+  width: 100%;
+  max-width: 560px;
+  justify-self: center;
+}
+
+.recherche-icone {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--texte-2);
+  pointer-events: none;
+}
+
+.recherche input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px 0 44px;
+  border-radius: var(--rayon-moyen);
+  border: 1px solid var(--bordure);
+  background: var(--surface);
+  color: var(--texte);
+  font: inherit;
+  font-size: 1rem; /* 16 px : évite le zoom automatique sur iPhone */
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.recherche input::placeholder { color: var(--texte-2); opacity: 1; }
+
+.recherche input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-anneau);
+}
+
+.recherche-panneau {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  padding: 14px 16px;
+  border-radius: var(--rayon-moyen);
+  border: 1px solid var(--bordure);
+  background: var(--surface);
+  color: var(--texte-2);
+  box-shadow: var(--ombre-forte);
+  font-size: 0.9375rem;
+}
+
+.actions {
+  grid-area: actions;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- Boutons ---------- */
+
+.bouton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--rayon-moyen);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--texte);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+}
+
+.bouton:active { transform: translateY(1px); }
+
+.bouton-principal {
+  background: var(--accent);
+  color: var(--accent-texte);
+}
+.bouton-principal:hover { background: var(--accent-survol); }
+
+.bouton-secondaire {
+  background: var(--surface);
+  border-color: var(--bordure);
+}
+.bouton-secondaire:hover { background: var(--surface-2); }
+
+.bouton-danger {
+  background: var(--danger);
+  color: var(--danger-texte);
+}
+.bouton-danger:hover { background: var(--danger-survol); }
+
+.bouton-texte-danger { color: var(--danger); }
+.bouton-texte-danger:hover { background: var(--danger-doux); }
+
+.bouton:disabled { opacity: 0.6; cursor: progress; }
+
+.bouton-icone {
+  width: 44px;
+  padding: 0;
+  color: var(--texte-2);
+}
+.bouton-icone:hover { background: var(--surface-2); color: var(--texte); }
+.bouton-icone[aria-current="page"] { background: var(--accent-doux); color: var(--accent); }
+
+/* ---------- Contenu ---------- */
+
+.contenu {
+  max-width: var(--largeur-max);
+  margin: 0 auto;
+  padding-block: 32px 96px;
+  padding-left: var(--gouttiere-g);
+  padding-right: var(--gouttiere-d);
+}
+
+.contenu:focus { outline: none; }
+
+.entete-page {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 16px;
+  margin-bottom: 24px;
+}
+
+.entete-page h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 1.35rem + 1.4vw, 2.25rem);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.sous-titre {
+  margin: 6px 0 0;
+  color: var(--texte-2);
+}
+
+.retour {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin: -8px 0 4px;
+  color: var(--texte-2);
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: 8px;
+}
+.retour:hover { color: var(--texte); }
+
+/* État vide de l'accueil */
+.vide {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+  padding: 48px 24px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  text-align: center;
+}
+
+.vide h2 {
+  margin: 8px 0 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.vide p {
+  margin: 0;
+  max-width: 48ch;
+  color: var(--texte-2);
+}
+
+.vide .bouton { margin-top: 8px; }
+
+.exemple {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.exemple figcaption {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texte-2);
+}
+
+/* ---------- Plaque d'immatriculation ---------- */
+
+.plaque {
+  display: inline-flex;
+  align-items: stretch;
+  max-width: 100%;
+  height: 44px;
+  border: 2px solid var(--plaque-cadre);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--plaque-fond);
+  color: var(--plaque-texte);
+  box-shadow: var(--ombre);
+}
+
+.plaque-bande {
+  width: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 0 3px;
+  background: var(--plaque-bande);
+  color: var(--plaque-bande-texte);
+  font-family: var(--police);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.plaque-etoiles {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px dotted var(--plaque-etoiles);
+}
+
+.plaque-numero {
+  min-width: 0;
+  padding: 0 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 40px;
+  font-family: var(--police-mono);
+  font-size: 1.375rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  font-variant-numeric: tabular-nums;
+}
+
+.vide-compact { padding: 32px 24px; }
+
+/* ---------- Alerte (données non conservées) ---------- */
+
+.alerte-zone {
+  max-width: var(--largeur-max);
+  margin: 0 auto;
+  padding-top: 16px;
+  padding-left: var(--gouttiere-g);
+  padding-right: var(--gouttiere-d);
+}
+
+.alerte {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--avertissement-bord);
+  border-radius: var(--rayon-moyen);
+  background: var(--avertissement-doux);
+  font-size: 0.9375rem;
+}
+
+.alerte [data-icone] { color: var(--avertissement); padding-top: 1px; }
+
+/* ---------- Cartes des voitures (accueil) ---------- */
+
+.grille-voitures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+
+.carte-voiture {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.carte-voiture:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--bordure));
+  box-shadow: var(--ombre);
+}
+
+.carte-voiture .plaque { justify-self: start; box-shadow: none; }
+
+.carte-voiture-titre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+.carte-voiture-titre h2 {
+  margin: 0;
+  font-size: 1.1875rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.carte-voiture-infos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--bordure);
+}
+
+.carte-voiture-infos dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-2);
+}
+
+.carte-voiture-infos dd {
+  margin: 2px 0 0;
+  font-family: var(--police-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* ---------- Fiche voiture ---------- */
+
+.entete-voiture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 24px;
+}
+
+.entete-voiture-identite {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.entete-voiture h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 1.35rem + 1.4vw, 2.25rem);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.entete-voiture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Fenêtres (formulaires, confirmations) ---------- */
+
+body:has(.fenetre[open]) { overflow: hidden; }
+
+.fenetre {
+  width: min(520px, 100% - 32px);
+  max-height: min(90dvh, 760px);
+  padding: 0;
+  border: 1px solid var(--bordure);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--texte);
+  box-shadow: var(--ombre-forte);
+}
+
+.fenetre[open] { animation: fenetre-entree 0.18s ease-out; }
+
+.fenetre::backdrop { background: var(--voile); }
+
+@keyframes fenetre-entree {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.fenetre-forme {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+
+.fenetre-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 6px 24px;
+}
+
+.fenetre-entete h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.fenetre-corps {
+  display: grid;
+  gap: 18px;
+  padding: 10px 24px 22px;
+  overflow-y: auto;
+}
+
+.fenetre-texte {
+  margin: 0;
+  color: var(--texte-2);
+}
+
+.fenetre-pied {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--bordure);
+}
+
+/* ---------- Champs de formulaire ---------- */
+
+.champ {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.champ label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.facultatif {
+  font-weight: 400;
+  color: var(--texte-2);
+}
+
+.champ input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-moyen);
+  background: var(--fond);
+  color: var(--texte);
+  font: inherit;
+  font-size: 1rem; /* 16 px : évite le zoom automatique sur iPhone */
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.champ input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-anneau);
+}
+
+.champ input[aria-invalid="true"] { border-color: var(--danger); }
+
+.champ .saisie-plaque {
+  font-family: var(--police-mono);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.champ .saisie-courte { max-width: 160px; }
+
+.champ-aide,
+.champ-erreur {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.champ-aide { color: var(--texte-2); }
+
+.champ-erreur {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.champs-ligne {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 18px 16px;
+}
+
+/* ---------- Paramètres ---------- */
+
+.sections {
+  display: grid;
+  gap: 16px;
+}
+
+.section {
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+.ligne-reglage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding: 20px 24px;
+}
+
+.reglage-texte {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.reglage-texte h2 {
+  margin: 0;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.reglage-texte p {
+  margin: 4px 0 0;
+  max-width: 60ch;
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+
+.pastille {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--texte-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Choix segmenté (Automatique / Clair / Sombre) */
+.segments {
+  display: inline-flex;
+  padding: 4px;
+  gap: 4px;
+  border-radius: var(--rayon-moyen);
+  background: var(--surface-2);
+}
+
+.segments button {
+  min-height: 38px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--texte-2);
+  font: inherit;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segments button:hover { color: var(--texte); }
+
+.segments button[aria-checked="true"] {
+  background: var(--surface);
+  color: var(--texte);
+  box-shadow: var(--ombre);
+}
+
+/* ---------- Messages éphémères ---------- */
+
+.messages {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding-left: var(--gouttiere-g);
+  padding-right: var(--gouttiere-d);
+  pointer-events: none;
+}
+
+.toast {
+  max-width: 440px;
+  padding: 12px 18px;
+  border-radius: var(--rayon-moyen);
+  background: var(--texte);
+  color: var(--fond);
+  box-shadow: var(--ombre-forte);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  pointer-events: auto;
+  animation: toast-entree 0.2s ease-out;
+}
+
+.toast.toast-sortie {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+@keyframes toast-entree {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Petits écrans ---------- */
+
+@media (max-width: 879px) {
+  .barre-interne {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "marque actions"
+      "recherche recherche";
+    padding-block: 10px 12px;
+  }
+
+  .actions { justify-self: end; gap: 6px; }
+
+  .actions .bouton { padding: 0 12px; gap: 6px; }
+
+  .actions .bouton-icone { width: 40px; padding: 0; }
+
+  .recherche { max-width: none; }
+
+  .contenu { padding-block: 24px 96px; }
+
+  .ligne-reglage { padding: 18px; }
+}
+
+@media (max-width: 559px) {
+  .marque-nom { display: none; }
+
+  /* Les fenêtres deviennent des panneaux qui montent du bas de l'écran */
+  .fenetre {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: auto 0 0;
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .fenetre[open] { animation-name: panneau-entree; }
+
+  .fenetre-entete { padding-left: max(20px, env(safe-area-inset-left, 0px)); }
+
+  .fenetre-corps {
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+  }
+
+  .fenetre-pied {
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .fenetre-pied .bouton { flex: 1; }
+
+  .entete-voiture-actions { width: 100%; }
+
+  .entete-voiture-actions .bouton { flex: 1; }
+}
+
+@keyframes panneau-entree {
+  from { transform: translateY(100%); }
+  to { transform: none; }
+}
+
+/* Très petits téléphones : le bouton Km garde son texte mais perd son icône */
+@media (max-width: 389px) {
+  #bouton-km [data-icone] { display: none; }
+}
+
+@media (max-width: 339px) {
+  .actions { gap: 4px; }
+  .actions .bouton { padding: 0 10px; }
+  .actions .bouton-icone { width: 38px; padding: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
