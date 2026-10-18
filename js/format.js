@@ -46,6 +46,19 @@
     return `${jour}/${mois}/${annee}`;
   }
 
+  // « 13/01/2025 » (ou « 2025-01-13 ») → « 2025-01-13 ». Vide → null. Illisible ou date impossible (31/02) → NaN.
+  function lireDate(texte) {
+    const propre = String(texte ?? '').trim();
+    if (propre === '') return null;
+    const francaise = propre.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+    const iso = propre.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!francaise && !iso) return NaN;
+    const [jour, mois, annee] = francaise ? francaise.slice(1).map(Number) : iso.slice(1).reverse().map(Number);
+    const verifiee = new Date(Date.UTC(annee, mois - 1, jour));
+    if (annee < 1900 || annee > 2100 || verifiee.getUTCMonth() !== mois - 1 || verifiee.getUTCDate() !== jour) return NaN;
+    return `${annee}-${String(mois).padStart(2, '0')}-${String(jour).padStart(2, '0')}`;
+  }
+
   function aujourdhui() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -62,5 +75,5 @@
     return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(octets / (1024 * 1024))} Mo`;
   }
 
-  EV.format = { lireMontant, lireKm, montant, montantSaisie, km, kmSaisie, date, aujourdhui, pluriel, taille };
+  EV.format = { lireMontant, lireKm, lireDate, montant, montantSaisie, km, kmSaisie, date, aujourdhui, pluriel, taille };
 })(window.EV = window.EV || {});

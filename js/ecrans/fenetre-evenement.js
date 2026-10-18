@@ -251,11 +251,7 @@
       </div>
 
       <div class="champs-ligne">
-        <div class="champ">
-          <label for="ev-date">Date</label>
-          <input id="ev-date" name="date" type="date" value="${valeurs.date || ''}" aria-describedby="ev-date-aide">
-          <p class="champ-aide" id="ev-date-aide">Laissez vide si elle est inconnue.</p>
-        </div>
+        ${ui.champDate({ id: 'ev-date', nom: 'date', libelle: 'Date', valeur: valeurs.date, aide: 'Laissez vide si elle est inconnue.' })}
         ${ui.champ({
           id: 'ev-km', nom: 'km', libelle: 'Kilométrage', facultatif: true, valeur: format.kmSaisie(valeurs.km),
           attributs: `inputmode="numeric" autocomplete="off" placeholder="Ex. : 140 000"${voitureChoisie && !evenement ? ' autofocus' : ''}`
@@ -393,12 +389,8 @@
     else location.hash = cible;
   }
 
-  // Bouton « Ajouter » : nouvel événement, pour la voiture affichée s'il y en a une.
-  async function nouveau(voitureId = null) {
-    if ((await voitures.liste()).length === 0) {
-      ui.toast("Ajoutez d'abord une voiture : ses entretiens seront rangés dans son dossier.");
-      return;
-    }
+  // Bouton « Ajouter » de l'onglet Entretiens : nouvel événement pour la voiture affichée.
+  async function nouveau(voitureId) {
     const resultat = await ouvrir({ voitureId });
     if (!resultat) return;
     ui.toast('Événement enregistré.');

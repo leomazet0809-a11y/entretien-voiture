@@ -172,15 +172,13 @@ a { color: inherit; }
   padding-block: 12px;
   padding-left: var(--gouttiere-g);
   padding-right: var(--gouttiere-d);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "marque recherche actions";
+  display: flex;
   align-items: center;
-  gap: 10px 24px;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .marque {
-  grid-area: marque;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -201,12 +199,12 @@ a { color: inherit; }
   place-items: center;
 }
 
+/* Champ Rechercher, dans l'en-tête de l'onglet Entretiens */
 .recherche {
-  grid-area: recherche;
   position: relative;
-  width: 100%;
-  max-width: 560px;
-  justify-self: center;
+  flex: 1 1 240px;
+  max-width: 420px;
+  min-width: 0;
 }
 
 .recherche-icone {
@@ -241,9 +239,11 @@ a { color: inherit; }
 
 .recherche-panneau {
   position: absolute;
+  z-index: 15;
   top: calc(100% + 8px);
-  left: 0;
   right: 0;
+  /* Au moins 420 px de large : s'il le faut, le panneau déborde du champ vers la gauche */
+  width: max(100%, min(420px, 100vw - 32px));
   max-height: min(70dvh, 560px);
   padding: 6px;
   overflow-y: auto;
@@ -368,7 +368,6 @@ a { color: inherit; }
 }
 
 .actions {
-  grid-area: actions;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -668,18 +667,27 @@ a { color: inherit; }
 .entete-voiture {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px 24px;
   margin-bottom: 24px;
 }
 
+/* La plaque, avec à sa droite la marque, le modèle et l'année */
 .entete-voiture-identite {
-  display: grid;
-  justify-items: start;
-  gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
   min-width: 0;
 }
+
+.entete-voiture-nom {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.entete-voiture-nom .sous-titre { margin-top: 2px; }
 
 .entete-voiture h1 {
   margin: 0;
@@ -767,8 +775,10 @@ body:has(.fenetre[open]) { overflow: hidden; }
 
 /* ---------- Champs de formulaire ---------- */
 
+/* align-content : côte à côte, les champs restent alignés même si l'un d'eux a une aide ou une erreur en dessous */
 .champ {
   display: grid;
+  align-content: start;
   gap: 6px;
   min-width: 0;
 }
@@ -819,7 +829,7 @@ body:has(.fenetre[open]) { overflow: hidden; }
   resize: vertical;
 }
 
-.champ input[type="date"] { min-width: 0; }
+.champ [data-saisie-date] { font-variant-numeric: tabular-nums; }
 
 .champ input:focus,
 .champ select:focus,
@@ -1074,10 +1084,10 @@ body:has(.fenetre[open]) { overflow: hidden; }
   font-size: 0.9375rem;
 }
 
-/* Zone qui défile dans les deux sens ; l'en-tête et la colonne Date restent visibles */
+/* Le tableur s'allonge avec la page : c'est la page entière qui défile, avec une seule barre de défilement.
+   Sur un écran étroit, la zone défile aussi de gauche à droite ; la colonne Date reste alors visible. */
 .tableur-zone {
-  max-height: max(360px, calc(100dvh - 220px));
-  overflow: auto;
+  overflow-x: auto;
   border: 1px solid var(--bordure);
   border-radius: var(--rayon);
   background: var(--surface);
@@ -1230,8 +1240,8 @@ body:has(.fenetre[open]) { overflow: hidden; }
   display: flex;
   gap: 4px;
   margin-bottom: 20px;
-  border-bottom: 1px solid var(--bordure);
-  overflow-x: auto;
+  /* Trait sous les onglets, dessiné en ombre : le soulignement de l'onglet actif le recouvre sans rien faire déborder */
+  box-shadow: inset 0 -1px 0 var(--bordure);
 }
 
 .onglet {
@@ -1239,7 +1249,6 @@ body:has(.fenetre[open]) { overflow: hidden; }
   align-items: center;
   gap: 8px;
   min-height: 44px;
-  margin-bottom: -1px;
   padding: 0 14px;
   border-bottom: 2px solid transparent;
   color: var(--texte-2);
@@ -1265,6 +1274,24 @@ body:has(.fenetre[open]) { overflow: hidden; }
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* En-tête d'un onglet : titre, bouton (Ajouter ou Km), champ Rechercher, puis le résumé en dessous */
+.onglet-entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 4px 0 16px;
+}
+
+.onglet-entete h2 {
+  margin: 0 4px 0 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.onglet-entete .tableur-resume { flex-basis: 100%; }
 
 /* ---------- Kilométrage ---------- */
 
@@ -1391,8 +1418,6 @@ body:has(.fenetre[open]) { overflow: hidden; }
   color: var(--texte-2);
   font-size: 0.8125rem;
 }
-
-.tableur-zone-courte { max-height: 480px; }
 
 .tableau-releves { min-width: 520px; }
 
@@ -1622,24 +1647,23 @@ body:has(.fenetre[open]) { overflow: hidden; }
   to { opacity: 1; transform: none; }
 }
 
+/* ---------- Grands écrans ---------- */
+
+/* Le tableur tient en largeur : la ligne des titres de colonnes reste visible sous la barre du haut pendant le défilement */
+@media (min-width: 1100px) {
+  .tableur-zone { overflow: visible; }
+
+  .tableur th { top: 69px; } /* hauteur de la barre du haut */
+
+  .tableur thead th:first-child { border-top-left-radius: calc(var(--rayon) - 1px); }
+
+  .tableur thead th:last-child { border-top-right-radius: calc(var(--rayon) - 1px); }
+}
+
 /* ---------- Petits écrans ---------- */
 
 @media (max-width: 879px) {
-  .barre-interne {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "marque actions"
-      "recherche recherche";
-    padding-block: 10px 12px;
-  }
-
-  .actions { justify-self: end; gap: 6px; }
-
-  .actions .bouton { padding: 0 12px; gap: 6px; }
-
-  .actions .bouton-icone { width: 40px; padding: 0; }
-
-  .recherche { max-width: none; }
+  .barre-interne { padding-block: 10px; }
 
   .contenu { padding-block: 24px 96px; }
 
@@ -1651,8 +1675,6 @@ body:has(.fenetre[open]) { overflow: hidden; }
 }
 
 @media (max-width: 559px) {
-  .marque-nom { display: none; }
-
   /* Les fenêtres deviennent des panneaux qui montent du bas de l'écran */
   .fenetre {
     width: 100%;
@@ -1691,6 +1713,17 @@ body:has(.fenetre[open]) { overflow: hidden; }
 
   .ligne-entretien { padding: 10px 14px 14px; }
 
+  .entete-voiture-identite { column-gap: 14px; }
+
+  .entete-voiture h1 { font-size: 1.5rem; }
+
+  /* Plaque un peu plus petite, pour laisser la place au nom de la voiture à sa droite */
+  .entete-voiture .plaque { height: 38px; }
+
+  .entete-voiture .plaque-bande { width: 20px; font-size: 0.6875rem; }
+
+  .entete-voiture .plaque-numero { padding: 0 10px; line-height: 34px; font-size: 1.125rem; }
+
   .entete-voiture-actions { width: 100%; }
 
   .entete-voiture-actions .bouton { flex: 1; }
@@ -1705,22 +1738,15 @@ body:has(.fenetre[open]) { overflow: hidden; }
   to { transform: none; }
 }
 
-/* Très petits téléphones : le bouton Km garde son texte mais perd son icône */
-@media (max-width: 389px) {
-  #bouton-km [data-icone] { display: none; }
-}
-
 @media (max-width: 359px) {
+  .marque-nom { display: none; }
+
+  .onglet { gap: 6px; padding: 0 8px; }
+
   .segments button {
     padding: 0 8px;
     font-size: 0.875rem;
   }
-}
-
-@media (max-width: 339px) {
-  .actions { gap: 4px; }
-  .actions .bouton { padding: 0 10px; }
-  .actions .bouton-icone { width: 38px; padding: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1731,7 +1757,4 @@ body:has(.fenetre[open]) { overflow: hidden; }
 }
 
 /* Avant la connexion : seuls le logo et le bouton de thème restent dans la barre du haut */
-.non-connecte .recherche,
-.non-connecte #bouton-ajouter,
-.non-connecte #bouton-km,
 .non-connecte #lien-parametres { display: none; }

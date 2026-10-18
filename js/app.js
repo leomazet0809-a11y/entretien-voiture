@@ -1,13 +1,8 @@
-/* Démarrage : branche la barre du haut, connecte l'utilisateur, puis affiche l'écran demandé. */
+/* Démarrage : branche la barre du haut (thème), connecte l'utilisateur, puis affiche l'écran demandé. */
 (function (EV) {
   'use strict';
 
   const { ui, theme, routeur } = EV;
-
-  function voitureAffichee() {
-    const [ecran, id] = location.hash.replace(/^#/, '').split('/');
-    return ecran === 'voiture' && id ? decodeURIComponent(id) : null;
-  }
 
   // L'espace en ligne ne répond pas comme prévu : on explique quoi faire plutôt que de laisser un écran vide.
   function afficherProbleme(erreur) {
@@ -30,13 +25,6 @@
     theme.appliquer();
 
     document.getElementById('bouton-theme').addEventListener('click', theme.basculer);
-    // Sur la fiche d'une voiture, le nouvel événement ou relevé lui est rattaché d'office.
-    document.getElementById('bouton-ajouter').addEventListener('click', () => {
-      EV.fenetreEvenement.nouveau(voitureAffichee());
-    });
-    document.getElementById('bouton-km').addEventListener('click', () => {
-      EV.fenetreReleve.nouveau(voitureAffichee());
-    });
 
     const utilisateur = await EV.compte.demarrer();
     let donneesConservees;
@@ -48,7 +36,6 @@
       return;
     }
     document.getElementById('alerte-stockage').hidden = donneesConservees;
-    EV.panneauRecherche.brancher();
 
     routeur.afficher();
   }

@@ -119,6 +119,7 @@
       });
 
       document.body.appendChild(boite);
+      formulaire.querySelectorAll('[data-saisie-date]').forEach(brancherDate);
       if (preparer) preparer(formulaire);
       boite.showModal();
     });
@@ -140,6 +141,63 @@
       </div>`;
   }
 
+  // Champ de date tapée au clavier, au format JJ/MM/AAAA, sans calendrier. `valeur` : date ISO (« 2025-01-13 ») ou vide.
+  function champDate({ valeur = '', attributs = '', ...reste }) {
+    return champ({
+      ...reste,
+      valeur: EV.format.date(valeur),
+      attributs: `data-saisie-date inputmode="numeric" autocomplete="off" maxlength="10" placeholder="JJ/MM/AAAA" ${attributs}`
+    });
+  }
+
+  // « 13012025 » → « 13/01/2025 ». `barreFinale` : on ajoute déjà la barre qui suit le jour ou le mois complet (« 13/ »).
+  function chiffresEnDate(chiffres, barreFinale) {
+    let texte = chiffres.slice(0, 2);
+    if (chiffres.length > 2 || (barreFinale && chiffres.length === 2)) texte += '/';
+    texte += chiffres.slice(2, 4);
+    if (chiffres.length > 4 || (barreFinale && chiffres.length === 4)) texte += '/';
+    return texte + chiffres.slice(4, 8);
+  }
+
+  // Pendant la frappe, les barres s'ajoutent toutes seules : on ne tape que les chiffres.
+  function brancherDate(saisie) {
+    // « / », « . », « - » ou espace tapé après un seul chiffre : on complète par un zéro (« 3/ » → « 03/ »).
+    saisie.addEventListener('beforeinput', (e) => {
+      if (!/^[/.\- ]$/.test(e.data || '')) return;
+      e.preventDefault();
+      const valeur = saisie.value;
+      if (saisie.selectionStart !== valeur.length) return;
+      let chiffres = valeur.replace(/\D/g, '');
+      if (/^\d$/.test(valeur.split('/').pop()) && chiffres.length < 4) chiffres = `${chiffres.slice(0, -1)}0${chiffres.slice(-1)}`;
+      saisie.value = chiffresEnDate(chiffres, true);
+      saisie.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    saisie.addEventListener('input', (e) => {
+      const valeur = saisie.value;
+      const suppression = /^delete/.test(e.inputType || '');
+      // Date collée ou complétée par le navigateur : « 2025-01-13 », « 3/1/2025 ».
+      const iso = valeur.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const complete = !suppression && valeur.trim().match(/^(\d{1,2})[/.\- ](\d{1,2})[/.\- ](\d{4})$/);
+      let chiffres = valeur.replace(/\D/g, '');
+      if (iso) chiffres = iso[3] + iso[2] + iso[1];
+      else if (complete) chiffres = complete[1].padStart(2, '0') + complete[2].padStart(2, '0') + complete[3];
+      const texte = chiffresEnDate(chiffres, !suppression);
+      if (texte === valeur) return;
+
+      // Le curseur reste après le même nombre de chiffres.
+      const chiffresAvant = valeur.slice(0, saisie.selectionStart ?? valeur.length).replace(/\D/g, '').length;
+      let position = 0;
+      for (let vus = 0; position < texte.length && vus < chiffresAvant; position += 1) {
+        if (/\d/.test(texte[position])) vus += 1;
+      }
+      if (iso || complete) position = texte.length;
+      else if (!suppression && texte[position] === '/') position += 1;
+      saisie.value = texte;
+      saisie.setSelectionRange(position, position);
+    });
+  }
+
   // Affiche les erreurs sous les champs concernés et place le curseur sur la première.
   // Renvoie true s'il n'y a aucune erreur.
   function afficherErreurs(formulaire, erreurs) {
@@ -158,5 +216,5 @@
     return !premier;
   }
 
-  EV.ui = { icone, remplirIcones, echapper, plaque, toast, fenetre, confirmer, champ, afficherErreurs };
+  EV.ui = { icone, remplirIcones, echapper, plaque, toast, fenetre, confirmer, champ, champDate, afficherErreurs };
 })(window.EV = window.EV || {});

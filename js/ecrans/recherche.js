@@ -1,4 +1,5 @@
-/* Panneau de résultats sous le champ « Rechercher partout ». */
+/* Champ « Rechercher » (onglet Entretiens de la fiche voiture) et son panneau de résultats.
+   La recherche porte sur toutes les données : toutes les voitures, entretiens, documents et relevés. */
 (function (EV) {
   'use strict';
 
@@ -58,10 +59,26 @@
         s(`${format.date(r.date)} · ${format.km(r.km)}`), 'Relevé kilométrique', voituresParId[r.voitureId].plaque, 'compteur'))}`;
   }
 
-  function brancher() {
-    const champ = document.getElementById('champ-recherche');
-    const panneau = document.getElementById('panneau-recherche');
-    const zone = champ.closest('.recherche');
+  function champ() {
+    return `
+      <div class="recherche" role="search">
+        <span class="recherche-icone" aria-hidden="true">${ui.icone('recherche')}</span>
+        <label class="masque" for="champ-recherche">Rechercher dans toutes les données</label>
+        <input id="champ-recherche" type="search" placeholder="Rechercher" autocomplete="off" enterkeyhint="search">
+        <div class="recherche-panneau" id="panneau-recherche" hidden></div>
+      </div>`;
+  }
+
+  // Un clic en dehors du champ et de ses résultats ferme le panneau.
+  document.addEventListener('pointerdown', (e) => {
+    const zone = document.querySelector('.recherche');
+    if (zone && !zone.contains(e.target)) zone.querySelector('.recherche-panneau').hidden = true;
+  });
+
+  // Branche le champ créé par champ(), une fois inséré dans la page.
+  function brancher(racine) {
+    const saisie = racine.querySelector('#champ-recherche');
+    const panneau = racine.querySelector('#panneau-recherche');
     let dernier = null; // dernière recherche affichée, pour retrouver ce qui est cliqué
     let numero = 0;
     let minuterie = null;
@@ -71,7 +88,7 @@
     }
 
     async function lancer() {
-      const requete = champ.value;
+      const requete = saisie.value;
       const longueur = requete.trim().length;
       if (longueur === 0) {
         fermer();
@@ -84,7 +101,7 @@
       }
       const ceNumero = ++numero;
       const trouve = await recherche.chercher(requete);
-      if (ceNumero !== numero || champ.value !== requete) return; // une frappe plus récente a pris le relais
+      if (ceNumero !== numero || saisie.value !== requete) return; // une frappe plus récente a pris le relais
       dernier = trouve;
       panneau.innerHTML = rendre(trouve, requete);
       panneau.hidden = false;
@@ -94,7 +111,7 @@
       const { type, id } = bouton.dataset;
       const { resultats } = dernier;
       fermer();
-      champ.blur();
+      saisie.blur();
       if (type === 'voiture') {
         location.hash = `voiture/${id}`;
       } else if (type === 'evenement') {
@@ -110,16 +127,16 @@
       }
     }
 
-    champ.addEventListener('input', () => {
+    saisie.addEventListener('input', () => {
       clearTimeout(minuterie);
       minuterie = setTimeout(lancer, 120);
     });
-    champ.addEventListener('focus', lancer);
-    champ.addEventListener('keydown', (e) => {
+    saisie.addEventListener('focus', lancer);
+    saisie.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
-        champ.value = '';
+        saisie.value = '';
         fermer();
-        champ.blur();
+        saisie.blur();
       } else if (e.key === 'ArrowDown') {
         const premier = panneau.querySelector('.resultat');
         if (premier && !panneau.hidden) {
@@ -140,16 +157,12 @@
       const boutons = [...panneau.querySelectorAll('.resultat')];
       const rang = boutons.indexOf(document.activeElement);
       if (e.key === 'ArrowDown' && rang < boutons.length - 1) boutons[rang + 1].focus();
-      else if (e.key === 'ArrowUp') (rang > 0 ? boutons[rang - 1] : champ).focus();
-      else if (e.key === 'Escape') { fermer(); champ.focus(); }
+      else if (e.key === 'ArrowUp') (rang > 0 ? boutons[rang - 1] : saisie).focus();
+      else if (e.key === 'Escape') { fermer(); saisie.focus(); }
       else return;
       e.preventDefault();
     });
-
-    document.addEventListener('pointerdown', (e) => {
-      if (!zone.contains(e.target)) fermer();
-    });
   }
 
-  EV.panneauRecherche = { brancher };
+  EV.panneauRecherche = { champ, brancher };
 })(window.EV = window.EV || {});

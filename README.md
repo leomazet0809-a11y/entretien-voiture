@@ -34,6 +34,7 @@ Plus tard : bouton Planning.
 
 ```
 index.html            page unique et barre du haut
+icones/               icône de l'onglet du navigateur et de l'écran d'accueil du téléphone
 css/styles.css        styles, thèmes clair et sombre
 js/ui.js              icônes, messages, plaque d'immatriculation
 js/theme.js           bascule clair / sombre

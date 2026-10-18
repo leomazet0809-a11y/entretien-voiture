@@ -27,8 +27,10 @@
   function verifier(saisie, relevesDeLaVoiture) {
     const erreurs = {};
     if (!saisie.voitureId) erreurs.voitureId = 'Choisissez la voiture.';
-    if (!saisie.date) erreurs.date = 'Indiquez la date du relevé.';
-    else if (saisie.date > format.aujourdhui()) erreurs.date = 'La date ne peut pas être dans le futur.';
+    const date = format.lireDate(saisie.date);
+    if (date === null) erreurs.date = 'Indiquez la date du relevé.';
+    else if (Number.isNaN(date)) erreurs.date = 'Indiquez une date réelle au format JJ/MM/AAAA (ex. : 13/01/2025).';
+    else if (date > format.aujourdhui()) erreurs.date = 'La date ne peut pas être dans le futur.';
     const km = format.lireKm(saisie.km);
     if (km === null) erreurs.km = 'Indiquez le kilométrage affiché au compteur.';
     else if (Number.isNaN(km)) erreurs.km = 'Indiquez le kilométrage en chiffres (ex. : 158 220).';
@@ -36,15 +38,15 @@
     let avertissement = '';
     if (Object.keys(erreurs).length === 0) {
       const autres = relevesDeLaVoiture.filter((r) => r.id !== saisie.id);
-      const plusAncienPlusHaut = autres.filter((r) => r.date < saisie.date && r.km > km).sort((a, b) => b.km - a.km)[0];
-      const plusRecentPlusBas = autres.filter((r) => r.date > saisie.date && r.km < km).sort((a, b) => a.km - b.km)[0];
+      const plusAncienPlusHaut = autres.filter((r) => r.date < date && r.km > km).sort((a, b) => b.km - a.km)[0];
+      const plusRecentPlusBas = autres.filter((r) => r.date > date && r.km < km).sort((a, b) => a.km - b.km)[0];
       if (plusAncienPlusHaut) {
         avertissement = `Le ${format.date(plusAncienPlusHaut.date)}, le compteur indiquait déjà ${format.km(plusAncienPlusHaut.km)}. Vérifiez le kilométrage et la date.`;
       } else if (plusRecentPlusBas) {
         avertissement = `Le ${format.date(plusRecentPlusBas.date)}, plus tard, le compteur indiquait seulement ${format.km(plusRecentPlusBas.km)}. Vérifiez le kilométrage et la date.`;
       }
     }
-    return { valeurs: { voitureId: saisie.voitureId, date: saisie.date, km }, erreurs, avertissement };
+    return { valeurs: { voitureId: saisie.voitureId, date, km }, erreurs, avertissement };
   }
 
   // Chiffres clés d'un historique (trié du plus récent au plus ancien).

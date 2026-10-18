@@ -1,4 +1,4 @@
-/* Fenêtre « Relevé kilométrique » (bouton Km). */
+/* Fenêtre « Relevé kilométrique » (bouton Km de l'onglet Kilométrage). */
 (function (EV) {
   'use strict';
 
@@ -22,10 +22,7 @@
         <p class="champ-erreur" id="releve-voiture-erreur" hidden></p>
       </div>
       <div class="champs-ligne">
-        ${ui.champ({
-          id: 'releve-date', nom: 'date', libelle: 'Date', valeur: releve?.date || format.aujourdhui(),
-          attributs: `type="date" max="${format.aujourdhui()}"`
-        })}
+        ${ui.champDate({ id: 'releve-date', nom: 'date', libelle: 'Date', valeur: releve?.date || format.aujourdhui() })}
         ${ui.champ({
           id: 'releve-km', nom: 'km', libelle: 'Kilométrage au compteur', valeur: format.kmSaisie(releve?.km),
           attributs: `inputmode="numeric" autocomplete="off" placeholder="Ex. : 158 220"${voitureChoisie ? ' autofocus' : ''}`
@@ -84,12 +81,8 @@
     else location.hash = cible;
   }
 
-  // Bouton « Km » : nouveau relevé, pour la voiture affichée s'il y en a une.
-  async function nouveau(voitureId = null) {
-    if ((await voitures.liste()).length === 0) {
-      ui.toast("Ajoutez d'abord une voiture : son kilométrage sera rangé dans son dossier.");
-      return;
-    }
+  // Bouton « Km » de l'onglet Kilométrage : nouveau relevé pour la voiture affichée.
+  async function nouveau(voitureId) {
     const resultat = await ouvrir({ voitureId });
     if (!resultat) return;
     ui.toast('Kilométrage enregistré.');

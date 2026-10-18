@@ -10,6 +10,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400..700&family=Geist+Mono:wght@400..600&display=swap">
 <link rel="stylesheet" href="css/styles.css">
+<link rel="icon" href="icones/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="icon" href="icones/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icones/apple-touch-icon.png">
 <script>
   // Applique le thème mémorisé avant l'affichage, pour éviter un flash de la mauvaise couleur.
   try {
@@ -26,20 +29,7 @@
       <span class="marque-nom">Entretien voiture</span>
     </a>
 
-    <div class="recherche" role="search">
-      <span class="recherche-icone" data-icone="recherche" aria-hidden="true"></span>
-      <label class="masque" for="champ-recherche">Rechercher</label>
-      <input id="champ-recherche" type="search" placeholder="Rechercher partout…" autocomplete="off" enterkeyhint="search">
-      <div class="recherche-panneau" id="panneau-recherche" hidden></div>
-    </div>
-
     <div class="actions">
-      <button class="bouton bouton-principal" id="bouton-ajouter" type="button" title="Ajouter un entretien">
-        <span data-icone="plus" aria-hidden="true"></span><span>Ajouter</span>
-      </button>
-      <button class="bouton bouton-secondaire" id="bouton-km" type="button" title="Noter le kilométrage du jour">
-        <span data-icone="compteur" aria-hidden="true"></span><span>Km</span>
-      </button>
       <button class="bouton bouton-icone" id="bouton-theme" type="button" aria-label="Changer de thème"></button>
       <a class="bouton bouton-icone" id="lien-parametres" href="#parametres" aria-label="Paramètres" title="Paramètres">
         <span data-icone="reglages" aria-hidden="true"></span>

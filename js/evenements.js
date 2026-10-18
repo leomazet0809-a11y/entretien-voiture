@@ -48,6 +48,8 @@
     const erreursLignes = saisie.lignes.map(() => ({}));
 
     if (!saisie.voitureId) erreurs.voitureId = 'Choisissez la voiture.';
+    const date = format.lireDate(saisie.date);
+    if (Number.isNaN(date)) erreurs.date = 'Indiquez une date réelle au format JJ/MM/AAAA (ex. : 13/01/2025), ou laissez vide.';
     const km = format.lireKm(saisie.km);
     if (Number.isNaN(km)) erreurs.km = 'Indiquez le kilométrage en chiffres (ex. : 140 000), ou laissez vide.';
     const coutGlobal = saisie.modeCout === 'global' ? format.lireMontant(saisie.coutGlobal) : null;
@@ -74,7 +76,7 @@
 
     const valeurs = {
       voitureId: saisie.voitureId,
-      date: saisie.date || null,
+      date: Number.isNaN(date) ? null : date,
       km,
       garage: nettoyer(saisie.garage),
       modeCout: saisie.modeCout === 'detail' ? 'detail' : 'global',

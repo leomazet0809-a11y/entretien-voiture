@@ -77,17 +77,28 @@
     return `<tbody class="groupe${signale}" data-evenement="${evenement.id}">${lignes}${ligneTotal}</tbody>`;
   }
 
-  function tableur(liste, nomsCategories, documents) {
+  // En-tête de l'onglet Entretiens : titre, bouton Ajouter, champ Rechercher, puis le résumé.
+  function enteteEntretiens(liste) {
     const nombreEntretiens = liste.reduce((somme, ev) => somme + ev.lignes.length, 0);
     const totaux = liste.map(evenements.total).filter((t) => t !== null);
     const depense = totaux.length ? `${format.montant(totaux.reduce((a, b) => a + b, 0))} au total` : '';
-    const resume = [format.pluriel(liste.length, 'événement'), format.pluriel(nombreEntretiens, 'entretien'), depense].filter(Boolean).join(' · ');
+    const resume = liste.length
+      ? [format.pluriel(liste.length, 'événement'), format.pluriel(nombreEntretiens, 'entretien'), depense].filter(Boolean).join(' · ')
+      : '';
 
     return `
-      <div class="tableur-entete">
+      <div class="onglet-entete">
         <h2 id="titre-tableur">Entretiens</h2>
-        <p class="tableur-resume">${resume}</p>
-      </div>
+        <button class="bouton bouton-principal" type="button" data-ajouter-evenement title="Ajouter un événement d'entretien">
+          ${ui.icone('plus')}<span>Ajouter</span>
+        </button>
+        ${EV.panneauRecherche.champ()}
+        ${resume ? `<p class="tableur-resume">${resume}</p>` : ''}
+      </div>`;
+  }
+
+  function tableur(liste, nomsCategories, documents) {
+    return `
       <div class="tableur-zone" role="region" aria-labelledby="titre-tableur" tabindex="0">
         <table class="tableur">
           <thead>
@@ -111,23 +122,28 @@
     return `
       <section class="vide vide-compact">
         <h2>Aucun entretien pour l'instant</h2>
-        <p>Ajoutez le premier événement : sa date, le kilométrage, le garage, puis les entretiens réalisés.</p>
-        <button class="bouton bouton-principal" type="button" data-ajouter-evenement>
-          ${ui.icone('plus')}<span>Ajouter un événement</span>
-        </button>
+        <p>Cliquez sur Ajouter pour saisir le premier événement : sa date, le kilométrage, le garage, puis les entretiens réalisés.</p>
       </section>`;
   }
 
   // ---------- Onglet Kilométrage ----------
+
+  // En-tête de l'onglet Kilométrage : titre et bouton Km.
+  function enteteKilometrage() {
+    return `
+      <div class="onglet-entete">
+        <h2>Kilométrage</h2>
+        <button class="bouton bouton-principal" type="button" data-noter-km title="Noter le kilométrage du jour">
+          ${ui.icone('compteur')}<span>Km</span>
+        </button>
+      </div>`;
+  }
 
   function aucunReleve() {
     return `
       <section class="vide vide-compact">
         <h2>Aucun relevé pour l'instant</h2>
         <p>Notez le kilométrage du compteur avec le bouton Km. Les entretiens qui ont une date et un kilométrage s'ajoutent aussi ici automatiquement.</p>
-        <button class="bouton bouton-principal" type="button" data-noter-km>
-          ${ui.icone('compteur')}<span>Noter le kilométrage</span>
-        </button>
       </section>`;
   }
 
@@ -179,7 +195,7 @@
         </tr>`;
     }).join('');
     return `
-      <div class="tableur-zone tableur-zone-courte" role="region" aria-labelledby="titre-historique" tabindex="0">
+      <div class="tableur-zone" role="region" aria-labelledby="titre-historique" tabindex="0">
         <table class="tableur tableau-releves">
           <thead>
             <tr>
@@ -198,12 +214,13 @@
     const historique = await EV.kilometrage.historique(voiture.id);
     const contenu = zone.querySelector('[data-onglet-contenu]');
     if (historique.length === 0) {
-      contenu.innerHTML = aucunReleve();
+      contenu.innerHTML = enteteKilometrage() + aucunReleve();
       contenu.querySelector('[data-noter-km]').addEventListener('click', () => EV.fenetreReleve.nouveau(voiture.id));
       return;
     }
     const evenementsParId = Object.fromEntries(liste.map((ev) => [ev.id, ev]));
     contenu.innerHTML = `
+      ${enteteKilometrage()}
       ${tuiles(historique)}
       <section class="carte-graphique" aria-labelledby="titre-courbe">
         <h2 id="titre-courbe">Évolution du kilométrage</h2>
@@ -215,6 +232,8 @@
         <p class="tableur-resume">Cliquez sur un relevé pour le modifier.</p>
       </div>
       ${tableauReleves(historique, evenementsParId)}`;
+
+    contenu.querySelector('[data-noter-km]').addEventListener('click', () => EV.fenetreReleve.nouveau(voiture.id));
 
     const points = [...historique].reverse().map((r) => ({ date: r.date, km: r.km, origine: r.source === 'evenement' ? 'Entretien' : 'Relevé' }));
     EV.graphique.courbeKm(contenu.querySelector('[data-graphique]'), points);
@@ -250,7 +269,7 @@
       <div class="entete-voiture">
         <div class="entete-voiture-identite">
           ${ui.plaque(voiture.plaque)}
-          <div>
+          <div class="entete-voiture-nom">
             <h1>${ui.echapper(voitures.nom(voiture))}</h1>
             <p class="sous-titre">${voiture.annee ? `Année ${voiture.annee}` : 'Année non renseignée'}</p>
           </div>
@@ -271,7 +290,7 @@
       </nav>
 
       <div data-onglet-contenu>
-        ${ongletKm ? '' : (liste.length ? tableur(liste, nomsCategories, documents) : aucunEntretien())}
+        ${ongletKm ? '' : enteteEntretiens(liste) + (liste.length ? tableur(liste, nomsCategories, documents) : aucunEntretien())}
       </div>`;
 
     zone.querySelector('[data-modifier]').addEventListener('click', () => modifierVoiture(voiture));
@@ -280,7 +299,8 @@
       await ongletKilometrage(zone, voiture, liste);
       return;
     }
-    zone.querySelector('[data-ajouter-evenement]')?.addEventListener('click', () => EV.fenetreEvenement.nouveau(voiture.id));
+    zone.querySelector('[data-ajouter-evenement]').addEventListener('click', () => EV.fenetreEvenement.nouveau(voiture.id));
+    EV.panneauRecherche.brancher(zone);
 
     // Un clic n'importe où sur un événement l'ouvre ; au clavier, le bouton de la date fait de même.
     zone.querySelectorAll('tbody.groupe').forEach((corps) => {
