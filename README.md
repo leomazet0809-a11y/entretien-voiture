@@ -15,7 +15,7 @@ Elle fonctionne sur ordinateur et sur smartphone. Les données restent sur l'app
 |---|---|---|
 | 1 | Barre du haut, thème clair / sombre, adaptation à la taille de l'écran | Fait |
 | 2 | Voitures : créer, modifier, supprimer | Fait |
-| 3 | Paramètres : catégories d'entretien | À faire |
+| 3 | Paramètres : catégories d'entretien | Fait |
 | 4 | Fiche voiture et tableau des entretiens | À faire |
 | 5 | Documents joints (factures, photos) | À faire |
 | 6 | Kilométrage : bouton Km, historique, courbe | À faire |
@@ -35,6 +35,7 @@ js/theme.js           bascule clair / sombre
 js/routeur.js         navigation entre les écrans
 js/stockage.js        enregistrement des données dans le navigateur (IndexedDB)
 js/voitures.js        règles sur les voitures (format de plaque, vérifications)
+js/categories.js      règles sur les catégories d'entretien
 js/ecrans/*.js        un fichier par écran
 js/app.js             démarrage
 ```

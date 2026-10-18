@@ -761,6 +761,60 @@ body:has(.fenetre[open]) { overflow: hidden; }
   white-space: nowrap;
 }
 
+/* Catégories d'entretien */
+.ligne-reglage.ligne-reglage-titre { padding-bottom: 14px; }
+
+.ajout-categorie { padding: 0 24px 18px; }
+
+.ajout-categorie-ligne {
+  display: flex;
+  gap: 8px;
+}
+
+.ajout-categorie-ligne input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ajout-categorie-ligne .bouton { height: 48px; }
+
+.liste-categories {
+  margin: 0;
+  padding: 0 12px 8px 24px;
+  list-style: none;
+  border-top: 1px solid var(--bordure);
+}
+
+.categorie {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--bordure);
+}
+
+.categorie:last-child { border-bottom: 0; }
+
+.categorie-nom {
+  flex: 1;
+  min-width: 0;
+  padding-block: 8px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.categorie-usage {
+  margin-right: 8px;
+  color: var(--texte-2);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.categorie-vide {
+  padding: 16px 0;
+  color: var(--texte-2);
+}
+
 /* Choix segmenté (Automatique / Clair / Sombre) */
 .segments {
   display: inline-flex;
@@ -853,6 +907,10 @@ body:has(.fenetre[open]) { overflow: hidden; }
 
   .contenu { padding-block: 24px 96px; }
 
+  .ajout-categorie { padding: 0 18px 16px; }
+
+  .liste-categories { padding: 0 6px 6px 18px; }
+
   .ligne-reglage { padding: 18px; }
 }
 
@@ -889,6 +947,10 @@ body:has(.fenetre[open]) { overflow: hidden; }
   .entete-voiture-actions { width: 100%; }
 
   .entete-voiture-actions .bouton { flex: 1; }
+
+  .segments { width: 100%; }
+
+  .segments button { flex: 1; }
 }
 
 @keyframes panneau-entree {
@@ -899,6 +961,13 @@ body:has(.fenetre[open]) { overflow: hidden; }
 /* Très petits téléphones : le bouton Km garde son texte mais perd son icône */
 @media (max-width: 389px) {
   #bouton-km [data-icone] { display: none; }
+}
+
+@media (max-width: 359px) {
+  .segments button {
+    padding: 0 8px;
+    font-size: 0.875rem;
+  }
 }
 
 @media (max-width: 339px) {
