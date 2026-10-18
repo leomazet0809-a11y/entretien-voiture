@@ -15,7 +15,11 @@
     crayon: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
     corbeille: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
     fermer: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    alerte: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>'
+    alerte: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+    trombone: '<path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/>',
+    document: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+    telecharger: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+    photo: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>'
   };
 
   function icone(nom, taille = 20) {
@@ -60,9 +64,10 @@
   // Fenêtre par-dessus la page, pour un formulaire ou une confirmation.
   // `preparer(formulaire)` est appelé à l'ouverture ; `valider(formulaire)` renvoie true pour fermer.
   // `supprimer()`, s'il est fourni, ajoute un bouton Supprimer ; il renvoie true pour fermer la fenêtre.
+  // `annuler: false` retire le bouton Annuler (fenêtre de consultation avec un seul bouton « Fermer »).
   // Renvoie une promesse : true si l'utilisateur a validé, false s'il a annulé.
   let compteurFenetres = 0;
-  function fenetre({ titre, contenu, libelleValider = 'Enregistrer', danger = false, large = false, preparer, valider = () => true, supprimer }) {
+  function fenetre({ titre, contenu, libelleValider = 'Enregistrer', danger = false, large = false, annuler = true, preparer, valider = () => true, supprimer }) {
     return new Promise((resoudre) => {
       const idTitre = `fenetre-titre-${++compteurFenetres}`;
       const boite = document.createElement('dialog');
@@ -77,7 +82,7 @@
           <div class="fenetre-corps">${contenu}</div>
           <div class="fenetre-pied">
             ${supprimer ? `<button type="button" class="bouton bouton-texte-danger fenetre-supprimer" data-supprimer-fenetre>${icone('corbeille', 18)}<span>Supprimer</span></button>` : ''}
-            <button type="button" class="bouton bouton-secondaire" data-fermer>Annuler</button>
+            ${annuler ? '<button type="button" class="bouton bouton-secondaire" data-fermer>Annuler</button>' : ''}
             <button type="submit" class="bouton ${danger ? 'bouton-danger' : 'bouton-principal'}">${echapper(libelleValider)}</button>
           </div>
         </form>`;

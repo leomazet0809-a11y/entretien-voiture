@@ -38,8 +38,11 @@
 
   // Un événement = un groupe de lignes. Date, km et garage ne sont écrits que sur la première.
   // Coût : sur la ligne s'il n'y a qu'un entretien ; sinon par ligne (coût détaillé) puis une ligne de total.
-  function groupe(evenement, nomsCategories) {
+  function groupe(evenement, nomsCategories, documents = []) {
     const plusieurs = evenement.lignes.length > 1;
+    const boutonDocuments = documents.length
+      ? `<button type="button" class="bouton-documents" data-documents aria-label="${documents.length > 1 ? `Voir les ${documents.length} documents` : 'Ouvrir le document'}" title="${documents.length > 1 ? 'Voir les documents' : 'Ouvrir le document'}">${ui.icone('trombone', 16)}<span>${documents.length}</span></button>`
+      : '';
     const total = evenements.total(evenement);
     const libelleDate = evenement.date ? format.date(evenement.date) : 'Date inconnue';
 
@@ -57,6 +60,7 @@
           <td class="col-texte">${ui.echapper(ligne.detail)}</td>
           <td class="col-texte">${ui.echapper(ligne.commentaire)}</td>
           <td class="col-cout">${cout}</td>
+          <td class="col-docs">${premiere ? boutonDocuments : ''}</td>
         </tr>`;
     }).join('');
 
@@ -65,13 +69,14 @@
           <td class="col-date"></td>
           <td colspan="5" class="total-libelle">Total de l'événement</td>
           <td class="col-cout">${format.montant(total) || '—'}</td>
+          <td class="col-docs"></td>
         </tr>` : '';
 
     const signale = EV.evenementSignale === evenement.id ? ' groupe-signale' : '';
     return `<tbody class="groupe${signale}" data-evenement="${evenement.id}">${lignes}${ligneTotal}</tbody>`;
   }
 
-  function tableur(liste, nomsCategories) {
+  function tableur(liste, nomsCategories, documents) {
     const nombreEntretiens = liste.reduce((somme, ev) => somme + ev.lignes.length, 0);
     const totaux = liste.map(evenements.total).filter((t) => t !== null);
     const depense = totaux.length ? `${format.montant(totaux.reduce((a, b) => a + b, 0))} au total` : '';
@@ -93,9 +98,10 @@
               <th scope="col">Détail</th>
               <th scope="col">Commentaire</th>
               <th class="col-cout" scope="col">Coût</th>
+              <th class="col-docs" scope="col"><span class="masque">Documents</span>${ui.icone('trombone', 16)}</th>
             </tr>
           </thead>
-          ${liste.map((ev) => groupe(ev, nomsCategories)).join('')}
+          ${liste.map((ev) => groupe(ev, nomsCategories, documents[ev.id])).join('')}
         </table>
       </div>`;
   }
@@ -119,7 +125,9 @@
       zone.innerHTML = introuvable();
       return;
     }
-    const [liste, listeCategories] = await Promise.all([evenements.parVoiture(voiture.id), categories.liste()]);
+    const [liste, listeCategories, documents] = await Promise.all([
+      evenements.parVoiture(voiture.id), categories.liste(), evenements.documentsParEvenement(voiture.id)
+    ]);
     const nomsCategories = Object.fromEntries(listeCategories.map((c) => [c.id, c.nom]));
 
     zone.innerHTML = `
@@ -143,7 +151,7 @@
         </div>
       </div>
 
-      ${liste.length ? tableur(liste, nomsCategories) : aucunEntretien()}`;
+      ${liste.length ? tableur(liste, nomsCategories, documents) : aucunEntretien()}`;
 
     zone.querySelector('[data-modifier]').addEventListener('click', () => modifierVoiture(voiture));
     zone.querySelector('[data-supprimer]').addEventListener('click', () => supprimerVoiture(voiture));
@@ -152,7 +160,14 @@
     // Un clic n'importe où sur un événement l'ouvre ; au clavier, le bouton de la date fait de même.
     zone.querySelectorAll('tbody.groupe').forEach((corps) => {
       const evenement = liste.find((ev) => ev.id === corps.dataset.evenement);
-      corps.addEventListener('click', () => EV.fenetreEvenement.modifier(evenement));
+      corps.addEventListener('click', (e) => {
+        if (e.target.closest('[data-documents]')) {
+          const titre = evenement.date ? `Documents du ${format.date(evenement.date)}` : 'Documents';
+          EV.documents.montrer(titre, documents[evenement.id]);
+          return;
+        }
+        EV.fenetreEvenement.modifier(evenement);
+      });
     });
 
     // Fait défiler jusqu'à l'événement qui vient d'être enregistré, une fois l'écran affiché.

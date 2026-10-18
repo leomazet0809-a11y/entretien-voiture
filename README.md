@@ -19,7 +19,7 @@ Elle fonctionne sur ordinateur et sur smartphone. Les données restent sur l'app
 | 2 | Voitures : créer, modifier, supprimer | Fait |
 | 3 | Paramètres : catégories d'entretien | Fait |
 | 4 | Événements d'entretien et tableur de la voiture | Fait |
-| 5 | Documents joints (factures, photos) | À faire |
+| 5 | Documents joints (factures, photos) | Fait |
 | 6 | Kilométrage : bouton Km, historique, courbe | À faire |
 | 7 | Recherche dans toutes les données | À faire |
 | 8 | Sauvegarde : exporter / importer | À faire |
@@ -39,7 +39,8 @@ js/stockage.js        enregistrement des données dans le navigateur (IndexedDB)
 js/voitures.js        règles sur les voitures (format de plaque, vérifications)
 js/categories.js      règles sur les catégories d'entretien
 js/evenements.js      règles sur les événements (vérifications, total des coûts, tri)
-js/format.js          montants, kilométrages et dates à la française
+js/documents.js       documents joints : vérification, ouverture, téléchargement
+js/format.js          montants, kilométrages, dates et tailles de fichiers à la française
 js/ecrans/*.js        un fichier par écran
 js/app.js             démarrage
 ```

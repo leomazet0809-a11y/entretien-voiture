@@ -113,7 +113,18 @@
     resumes,
     garages,
     lire: (id) => stockage.lire('evenements', id),
-    enregistrer: (evenement) => stockage.enregistrer('evenements', evenement),
+    documents: (id) => stockage.documentsDeLEvenement(id),
+    // Documents d'une voiture, rangés par événement : { idEvenement: [documents] }.
+    documentsParEvenement: async (voitureId) => {
+      const parEvenement = {};
+      (await stockage.parVoiture('documents', voitureId)).forEach((document) => {
+        (parEvenement[document.evenementId] || (parEvenement[document.evenementId] = [])).push(document);
+      });
+      Object.values(parEvenement).forEach((liste) => liste.sort((a, b) => a.creeLe.localeCompare(b.creeLe)));
+      return parEvenement;
+    },
+    // `documents` : { ajouts, suppressions } (voir stockage.enregistrerEvenement).
+    enregistrer: (evenement, documents) => stockage.enregistrerEvenement(evenement, documents),
     supprimer: (id) => stockage.supprimerEvenement(id)
   };
 })(window.EV = window.EV || {});

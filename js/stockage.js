@@ -165,6 +165,55 @@
     await finTransaction(transaction);
   }
 
+  // Documents joints à un événement.
+  async function documentsDeLEvenement(evenementId) {
+    if (memoire) return (await tous('documents')).filter((d) => d.evenementId === evenementId);
+    return attendre(base.transaction('documents').objectStore('documents').index('evenementId').getAll(evenementId));
+  }
+
+  // Enregistre un événement et ses changements de documents, en une seule opération.
+  // `ajouts` : documents à joindre ({ nom, type, taille, contenu }) ; `suppressions` : identifiants à retirer.
+  async function enregistrerEvenement(evenement, { ajouts = [], suppressions = [] } = {}) {
+    const maintenant = new Date().toISOString();
+    const complet = { ...evenement, id: evenement.id || nouvelId(), creeLe: evenement.creeLe || maintenant, modifieLe: maintenant };
+    const nouveaux = ajouts.map((fichier) => ({
+      id: nouvelId(),
+      evenementId: complet.id,
+      voitureId: complet.voitureId,
+      nom: fichier.nom,
+      type: fichier.type,
+      taille: fichier.taille,
+      contenu: fichier.contenu,
+      creeLe: maintenant,
+      modifieLe: maintenant
+    }));
+
+    if (memoire) {
+      memoire.evenements.set(complet.id, structuredClone(complet));
+      suppressions.forEach((id) => memoire.documents.delete(id));
+      memoire.documents.forEach((document) => {
+        if (document.evenementId === complet.id) document.voitureId = complet.voitureId;
+      });
+      nouveaux.forEach((document) => memoire.documents.set(document.id, document));
+      return complet;
+    }
+
+    const transaction = base.transaction(['evenements', 'documents'], 'readwrite');
+    transaction.objectStore('evenements').put(complet);
+    const documents = transaction.objectStore('documents');
+    suppressions.forEach((id) => documents.delete(id));
+    // Si l'événement change de voiture, ses documents le suivent.
+    const existants = documents.index('evenementId').getAll(complet.id);
+    existants.onsuccess = () => {
+      existants.result.forEach((document) => {
+        if (document.voitureId !== complet.voitureId) documents.put({ ...document, voitureId: complet.voitureId });
+      });
+    };
+    nouveaux.forEach((document) => documents.put(document));
+    await finTransaction(transaction);
+    return complet;
+  }
+
   // Supprime un événement et ses documents joints, en une seule opération.
   async function supprimerEvenement(id) {
     if (memoire) {
@@ -186,5 +235,8 @@
     await finTransaction(transaction);
   }
 
-  EV.stockage = { demarrer, nouvelId, tous, lire, parVoiture, enregistrer, supprimer, supprimerVoiture, supprimerEvenement };
+  EV.stockage = {
+    demarrer, nouvelId, tous, lire, parVoiture, enregistrer, supprimer,
+    supprimerVoiture, documentsDeLEvenement, enregistrerEvenement, supprimerEvenement
+  };
 })(window.EV = window.EV || {});
