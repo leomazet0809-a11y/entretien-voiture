@@ -1,6 +1,6 @@
 /* Règles sur les événements d'entretien.
-   Un événement = un passage : une date, un kilométrage, un garage, des documents,
-   et une ou plusieurs lignes d'entretien (catégorie, détail, commentaire, coût). */
+   Un événement = un passage : une date, un kilométrage, une société (champ `garage`), des documents,
+   et une ou plusieurs lignes d'entretien (catégorie, détail, coût). */
 (function (EV) {
   'use strict';
 
@@ -15,6 +15,12 @@
   function nettoyerParagraphe(texte) {
     return String(texte ?? '').split('\n').map((ligne) => ligne.replace(/[ \t]+/g, ' ').trim())
       .join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  // Texte du détail d'une ligne. Les lignes saisies avant la fusion des champs Détail et Commentaire
+  // peuvent encore avoir un commentaire à part : il est affiché à la suite du détail.
+  function texteDetail(ligne) {
+    return [ligne.detail, ligne.commentaire].filter(Boolean).join('\n');
   }
 
   function estRenseigne(valeur) {
@@ -61,10 +67,9 @@
         id: brute.id || stockage.nouvelId(),
         categorieId: brute.categorieId || null,
         detail: nettoyerParagraphe(brute.detail),
-        commentaire: nettoyer(brute.commentaire),
         cout: saisie.modeCout === 'detail' ? format.lireMontant(brute.cout) : null
       };
-      const vide = !ligne.categorieId && !ligne.detail && !ligne.commentaire && ligne.cout === null;
+      const vide = !ligne.categorieId && !ligne.detail && ligne.cout === null;
       if (vide) return; // ligne laissée vide : ignorée
       if (!ligne.categorieId && !ligne.detail) erreursLignes[rang].categorie = "Choisissez une catégorie ou décrivez l'entretien.";
       if (Number.isNaN(ligne.cout)) erreursLignes[rang].cout = 'Indiquez un montant, par exemple 84,90.';
@@ -99,7 +104,7 @@
     return parId;
   }
 
-  // Les garages déjà saisis, proposés pendant la frappe.
+  // Les sociétés déjà saisies, proposées pendant la frappe.
   async function garages() {
     const noms = new Map();
     (await stockage.tous('evenements')).forEach((evenement) => {
@@ -110,6 +115,7 @@
 
   EV.evenements = {
     total,
+    texteDetail,
     parVoiture,
     verifier,
     resumes,

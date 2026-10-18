@@ -40,7 +40,7 @@
   function rendre(trouve, requete) {
     const { mots, resultats, total, voituresParId, evenementsParId, nomsCategories } = trouve;
     if (total === 0) {
-      return `<p class="resultats-vide">Aucun résultat pour « ${ui.echapper(requete.trim())} ». Essayez une plaque, un garage, une pièce ou une date.</p>`;
+      return `<p class="resultats-vide">Aucun résultat pour « ${ui.echapper(requete.trim())} ». Essayez une plaque, une société, une pièce ou une date.</p>`;
     }
     const s = (texte) => recherche.surligner(texte, mots);
     const libelleEvenement = (ev) => [ev.date ? format.date(ev.date) : 'Date inconnue', ev.garage, format.km(ev.km)].filter(Boolean).join(' · ');
@@ -62,9 +62,11 @@
   function champ() {
     return `
       <div class="recherche" role="search">
-        <span class="recherche-icone" aria-hidden="true">${ui.icone('recherche')}</span>
-        <label class="masque" for="champ-recherche">Rechercher dans toutes les données</label>
-        <input id="champ-recherche" type="search" placeholder="Rechercher" autocomplete="off" enterkeyhint="search">
+        <div class="recherche-saisie">
+          <span class="recherche-icone" aria-hidden="true">${ui.icone('recherche')}</span>
+          <label class="masque" for="champ-recherche">Rechercher dans toutes les données</label>
+          <input id="champ-recherche" type="search" placeholder="Rechercher" autocomplete="off" enterkeyhint="search">
+        </div>
         <div class="recherche-panneau" id="panneau-recherche" hidden></div>
       </div>`;
   }

@@ -40,6 +40,7 @@
   }
 
   EV.categories = {
+    cle,
     liste,
     verifier,
     utilisations,

@@ -37,7 +37,7 @@
 
   // ---------- Tableur ----------
 
-  // Un événement = un groupe de lignes. Date, km et garage ne sont écrits que sur la première.
+  // Un événement = un groupe de lignes. Date, km et société ne sont écrits que sur la première.
   // Coût : sur la ligne s'il n'y a qu'un entretien ; sinon par ligne (coût détaillé) puis une ligne de total.
   function groupe(evenement, nomsCategories, documents = []) {
     const plusieurs = evenement.lignes.length > 1;
@@ -56,10 +56,9 @@
         <tr>
           <td class="col-date">${premiere ? `<button type="button" class="ouvrir-evenement${evenement.date ? '' : ' inconnu'}" aria-label="Modifier l'événement : ${libelleDate}">${libelleDate}</button>` : ''}</td>
           <td class="col-km">${premiere ? format.km(evenement.km) : ''}</td>
-          <td class="col-garage">${premiere ? ui.echapper(evenement.garage) : ''}</td>
+          <td class="col-societe">${premiere ? ui.echapper(evenement.garage) : ''}</td>
           <td class="col-categorie">${categorie ? `<span class="etiquette-categorie">${ui.echapper(categorie)}</span>` : '<span class="inconnu">—</span>'}</td>
-          <td class="col-texte">${ui.echapper(ligne.detail)}</td>
-          <td class="col-texte">${ui.echapper(ligne.commentaire)}</td>
+          <td class="col-detail">${ui.echapper(evenements.texteDetail(ligne))}</td>
           <td class="col-cout">${cout}</td>
           <td class="col-docs">${premiere ? boutonDocuments : ''}</td>
         </tr>`;
@@ -68,7 +67,7 @@
     const ligneTotal = plusieurs ? `
         <tr class="ligne-total">
           <td class="col-date"></td>
-          <td colspan="5" class="total-libelle">Total de l'événement</td>
+          <td colspan="4" class="total-libelle">Total de l'événement</td>
           <td class="col-cout">${format.montant(total) || '—'}</td>
           <td class="col-docs"></td>
         </tr>` : '';
@@ -77,7 +76,7 @@
     return `<tbody class="groupe${signale}" data-evenement="${evenement.id}">${lignes}${ligneTotal}</tbody>`;
   }
 
-  // En-tête de l'onglet Entretiens : titre, bouton Ajouter, champ Rechercher, puis le résumé.
+  // En-tête de l'onglet Entretiens : titre, bouton Ajouter, champ Rechercher et icônes Exporter / Importer, puis le résumé.
   function enteteEntretiens(liste) {
     const nombreEntretiens = liste.reduce((somme, ev) => somme + ev.lignes.length, 0);
     const totaux = liste.map(evenements.total).filter((t) => t !== null);
@@ -92,7 +91,17 @@
         <button class="bouton bouton-principal" type="button" data-ajouter-evenement title="Ajouter un événement d'entretien">
           ${ui.icone('plus')}<span>Ajouter</span>
         </button>
-        ${EV.panneauRecherche.champ()}
+        <div class="outils-tableur">
+          ${EV.panneauRecherche.champ()}
+          <button class="bouton bouton-secondaire bouton-icone" type="button" data-exporter
+            title="Exporter : télécharger les entretiens de cette voiture (fichier CSV)" aria-label="Exporter les entretiens (fichier CSV)">
+            ${ui.icone('telecharger')}
+          </button>
+          <label class="bouton bouton-secondaire bouton-icone" title="Importer : remplacer les entretiens de cette voiture par un fichier CSV">
+            ${ui.icone('importer')}<span class="masque">Importer un fichier CSV</span>
+            <input type="file" class="masque" accept=".csv,text/csv" data-importer>
+          </label>
+        </div>
         ${resume ? `<p class="tableur-resume">${resume}</p>` : ''}
       </div>`;
   }
@@ -105,10 +114,9 @@
             <tr>
               <th class="col-date" scope="col">Date</th>
               <th class="col-km" scope="col">Km</th>
-              <th class="col-garage" scope="col">Garage</th>
+              <th class="col-societe" scope="col">Société</th>
               <th class="col-categorie" scope="col">Catégorie</th>
-              <th scope="col">Détail</th>
-              <th scope="col">Commentaire</th>
+              <th class="col-detail" scope="col">Détail</th>
               <th class="col-cout" scope="col">Coût</th>
               <th class="col-docs" scope="col"><span class="masque">Documents</span>${ui.icone('trombone', 16)}</th>
             </tr>
@@ -122,7 +130,7 @@
     return `
       <section class="vide vide-compact">
         <h2>Aucun entretien pour l'instant</h2>
-        <p>Cliquez sur Ajouter pour saisir le premier événement : sa date, le kilométrage, le garage, puis les entretiens réalisés.</p>
+        <p>Cliquez sur Ajouter pour saisir le premier événement : sa date, le kilométrage, la société, puis les entretiens réalisés. Vous pouvez aussi importer un fichier CSV.</p>
       </section>`;
   }
 
@@ -301,6 +309,12 @@
     }
     zone.querySelector('[data-ajouter-evenement]').addEventListener('click', () => EV.fenetreEvenement.nouveau(voiture.id));
     EV.panneauRecherche.brancher(zone);
+    zone.querySelector('[data-exporter]').addEventListener('click', () => EV.echangeCsv.exporter(voiture));
+    zone.querySelector('[data-importer]').addEventListener('change', (e) => {
+      const fichier = e.target.files[0];
+      e.target.value = '';
+      if (fichier) EV.echangeCsv.importer(voiture, fichier);
+    });
 
     // Un clic n'importe où sur un événement l'ouvre ; au clavier, le bouton de la date fait de même.
     zone.querySelectorAll('tbody.groupe').forEach((corps) => {

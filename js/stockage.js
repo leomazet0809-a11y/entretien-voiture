@@ -7,7 +7,7 @@
 (function (EV) {
   'use strict';
 
-  // Un événement (un passage : date, km, garage, documents) contient ses lignes d'entretien.
+  // Un événement (un passage : date, km, société, documents) contient ses lignes d'entretien.
   const TABLES = ['voitures', 'categories', 'evenements', 'documents', 'releves'];
   const TAILLE_LOT = 400; // Firestore accepte 500 écritures par lot
 
@@ -311,6 +311,32 @@
     lot.envoyer().then(() => supprimerFichiers(documents)).catch(signalerEchec);
   }
 
+  // Remplace tous les événements d'une voiture (import d'un fichier CSV), avec leurs relevés kilométriques.
+  // `categories` : catégories nouvelles à créer. `rattachements` : { idDocument: idNouvelEvenement } pour les
+  // documents qui restent ; les autres documents de la voiture sont supprimés. Les relevés notés à la main restent.
+  async function remplacerEvenements(voitureId, evenements, { categories = [], rattachements = {} } = {}) {
+    const lot = nouveauLot();
+    categories.forEach((categorie) => lot.ecrire('categories', horodater(categorie)));
+    [...donnees.evenements.values()].filter((e) => e.voitureId === voitureId).forEach((e) => {
+      lot.effacer('evenements', e.id);
+      if (donnees.releves.has(idReleveDeLEvenement(e.id))) lot.effacer('releves', idReleveDeLEvenement(e.id));
+    });
+    evenements.map((e) => horodater({ ...e, voitureId })).forEach((evenement) => {
+      lot.ecrire('evenements', evenement);
+      const releve = releveDeLEvenement(evenement);
+      if (releve) lot.ecrire('releves', releve);
+    });
+    const retires = [];
+    [...donnees.documents.values()].filter((d) => d.voitureId === voitureId).forEach((d) => {
+      if (rattachements[d.id]) lot.ecrire('documents', horodater({ ...d, evenementId: rattachements[d.id] }));
+      else {
+        lot.effacer('documents', d.id);
+        retires.push(d);
+      }
+    });
+    lot.envoyer().then(() => supprimerFichiers(retires)).catch(signalerEchec);
+  }
+
   // Supprime une voiture et tout ce qui lui est rattaché.
   async function supprimerVoiture(id) {
     const documents = [...donnees.documents.values()].filter((d) => d.voitureId === id);
@@ -337,6 +363,6 @@
 
   EV.stockage = {
     demarrer, nouvelId, tous, lire, parVoiture, enregistrer, supprimer,
-    supprimerVoiture, documentsDeLEvenement, enregistrerEvenement, supprimerEvenement, arreter
+    supprimerVoiture, documentsDeLEvenement, enregistrerEvenement, supprimerEvenement, remplacerEvenements, arreter
   };
 })(window.EV = window.EV || {});

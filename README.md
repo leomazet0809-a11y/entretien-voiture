@@ -2,7 +2,7 @@
 
 Application web pour suivre l'entretien de ses voitures : un dossier par voiture, le tableau des entretiens, l'historique du kilométrage et une recherche dans toutes les données.
 
-Un **événement** est un passage (au garage ou chez soi) : une date, un kilométrage, un garage, des documents, et un ou plusieurs **entretiens** (catégorie, détail, commentaire). Le coût se saisit globalement ou entretien par entretien.
+Un **événement** est un passage (au garage ou chez soi) : une date, un kilométrage, une société, des documents, et un ou plusieurs **entretiens** (catégorie, détail). Le coût se saisit globalement ou entretien par entretien.
 
 Elle fonctionne sur ordinateur et sur smartphone. On s'y connecte avec un compte Google : les données sont enregistrées en ligne dans un espace propre à chaque compte, et sont donc les mêmes sur tous les appareils, mises à jour en temps réel.
 
@@ -25,7 +25,7 @@ Elle fonctionne sur ordinateur et sur smartphone. On s'y connecte avec un compte
 | 5 | Documents joints (factures, photos) | Fait |
 | 6 | Kilométrage : bouton Km, historique, courbe | Fait |
 | 7 | Recherche dans toutes les données | Fait |
-| 8 | Sauvegarde : exporter / importer | À faire |
+| 8 | Exporter / importer les entretiens d'une voiture (fichier CSV) | Fait |
 | 9 | Installation sur smartphone, mode hors ligne, mise en ligne | À faire |
 
 Plus tard : bouton Planning.
@@ -49,12 +49,30 @@ js/documents.js       documents joints : vérification, ouverture, téléchargem
 js/kilometrage.js     relevés kilométriques : vérifications, chiffres clés
 js/graphique.js       courbe du kilométrage (SVG, sans bibliothèque)
 js/recherche.js       recherche dans toutes les données (accents et majuscules ignorés)
+js/csv.js             lecture et écriture des fichiers CSV (tableur)
+js/echange.js         export / import des entretiens d'une voiture en CSV
 js/format.js          montants, kilométrages, dates et tailles de fichiers à la française
 js/ecrans/*.js        un fichier par écran
 js/app.js             démarrage
 ```
 
 Aucun outil à installer : HTML, CSS et JavaScript simples, sans compilation. Firebase est chargé depuis le site de Google.
+
+## Fichier CSV des entretiens
+
+Dans l'onglet Entretiens d'une voiture, à droite de Rechercher :
+
+- **Exporter** télécharge les entretiens de la voiture dans un fichier CSV (séparateur « ; », UTF-8), qui s'ouvre dans Excel ou Google Sheets. Colonnes : `Date ; Kilométrage ; Société ; Catégorie ; Détail ; Coût TTC`, une ligne par entretien.
+- **Importer** remplace les entretiens de la voiture par ceux d'un fichier CSV, après un résumé à confirmer. Rien n'est modifié si le fichier contient une erreur : la liste des lignes à corriger s'affiche.
+
+Règles de l'import :
+- les lignes qui ont la même date, le même kilométrage et la même société forment un seul événement ;
+- une case vide, `?????` ou `-` veut dire « inconnu » ;
+- un coût écrit seulement sur la première ligne d'un événement est son coût global ; sinon, chaque ligne a son coût ;
+- une catégorie inconnue est créée ;
+- les colonnes de l'ancien tableur sont reconnues (`Élément`, `Observation`, `Garage`, `Prix`…) : l'observation est ajoutée au détail ;
+- les documents joints restent rattachés à leur événement s'il est encore dans le fichier (même date, kilométrage et société) ; sinon ils sont supprimés, et le résumé le signale avant de confirmer ;
+- les relevés notés avec le bouton Km ne changent pas.
 
 ## Configuration Firebase
 

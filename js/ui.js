@@ -19,6 +19,7 @@
     trombone: '<path d="m16 6-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/>',
     document: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
     telecharger: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+    importer: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>',
     ouvrir: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     photo: '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>'
   };
@@ -120,8 +121,11 @@
 
       document.body.appendChild(boite);
       formulaire.querySelectorAll('[data-saisie-date]').forEach(brancherDate);
+      formulaire.addEventListener('input', virgulesDansLesMontants);
       if (preparer) preparer(formulaire);
       boite.showModal();
+      // Date mise en avant à l'ouverture : elle est sélectionnée, on tape la nouvelle par-dessus.
+      if (document.activeElement?.matches('[data-saisie-date]') && boite.contains(document.activeElement)) document.activeElement.select();
     });
   }
 
@@ -196,6 +200,15 @@
       saisie.value = texte;
       saisie.setSelectionRange(position, position);
     });
+  }
+
+  // Dans un montant, un point tapé devient une virgule : « 84.5 » → « 84,5 ».
+  function virgulesDansLesMontants(e) {
+    const saisie = e.target;
+    if (!saisie.matches('[data-saisie-montant]') || !saisie.value.includes('.')) return;
+    const position = saisie.selectionStart;
+    saisie.value = saisie.value.replace(/\./g, ',');
+    saisie.setSelectionRange(position, position);
   }
 
   // Affiche les erreurs sous les champs concernés et place le curseur sur la première.

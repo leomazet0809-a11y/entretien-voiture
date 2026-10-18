@@ -29,17 +29,13 @@
           </div>
           <div class="champ champ-cout-ligne">
             <label for="${id('cout')}">Coût TTC <span class="facultatif">(facultatif)</span></label>
-            <input id="${id('cout')}" name="${id('cout')}" value="${format.montantSaisie(ligne.cout)}" inputmode="decimal" autocomplete="off" placeholder="Ex. : 270,00" aria-describedby="${id('cout')}-erreur">
+            <input id="${id('cout')}" name="${id('cout')}" value="${format.montantSaisie(ligne.cout)}" data-saisie-montant inputmode="decimal" autocomplete="off" placeholder="Ex. : 270,00" aria-describedby="${id('cout')}-erreur">
             <p class="champ-erreur" id="${id('cout')}-erreur" hidden></p>
           </div>
         </div>
         <div class="champ">
           <label for="${id('detail')}">Détail</label>
-          <textarea id="${id('detail')}" name="${id('detail')}" rows="2" placeholder="Ex. : vidange, filtre à huile, filtre à air">${ui.echapper(ligne.detail || '')}</textarea>
-        </div>
-        <div class="champ">
-          <label for="${id('commentaire')}">Commentaire <span class="facultatif">(facultatif)</span></label>
-          <input id="${id('commentaire')}" name="${id('commentaire')}" value="${ui.echapper(ligne.commentaire || '')}" autocomplete="off" maxlength="200" placeholder="Ex. : prochain contrôle le 14/09/2027">
+          <textarea id="${id('detail')}" name="${id('detail')}" rows="3" placeholder="Ex. : vidange, filtre à huile, filtre à air">${ui.echapper(evenements.texteDetail(ligne))}</textarea>
         </div>
       </div>`;
   }
@@ -214,14 +210,13 @@
         voitureId: champs.voitureId.value,
         date: champs.date.value,
         km: champs.km.value,
-        garage: champs.garage.value,
+        garage: champs.garage.value, // la « Société »
         modeCout: formulaire.dataset.modeCout,
         coutGlobal: champs.coutGlobal.value,
         lignes: blocs.map((bloc) => ({
           id: bloc.dataset.idLigne,
           categorieId: valeur(bloc, 'categorie'),
           detail: valeur(bloc, 'detail'),
-          commentaire: valeur(bloc, 'commentaire'),
           cout: valeur(bloc, 'cout')
         }))
       }
@@ -251,14 +246,17 @@
       </div>
 
       <div class="champs-ligne">
-        ${ui.champDate({ id: 'ev-date', nom: 'date', libelle: 'Date', valeur: valeurs.date, aide: 'Laissez vide si elle est inconnue.' })}
-        ${ui.champ({
-          id: 'ev-km', nom: 'km', libelle: 'Kilométrage', facultatif: true, valeur: format.kmSaisie(valeurs.km),
-          attributs: `inputmode="numeric" autocomplete="off" placeholder="Ex. : 140 000"${voitureChoisie && !evenement ? ' autofocus' : ''}`
+        ${ui.champDate({
+          id: 'ev-date', nom: 'date', libelle: 'Date', valeur: valeurs.date, aide: 'Laissez vide si elle est inconnue.',
+          attributs: voitureChoisie && !evenement ? 'autofocus' : ''
         })}
         ${ui.champ({
-          id: 'ev-garage', nom: 'garage', libelle: 'Garage / société', facultatif: true, valeur: valeurs.garage,
-          attributs: 'list="liste-garages" autocomplete="off" maxlength="60" placeholder="Ex. : WAGNER"'
+          id: 'ev-km', nom: 'km', libelle: 'Kilométrage', facultatif: true, valeur: format.kmSaisie(valeurs.km),
+          attributs: 'inputmode="numeric" autocomplete="off" placeholder="Ex. : 140 000"'
+        })}
+        ${ui.champ({
+          id: 'ev-garage', nom: 'garage', libelle: 'Société', facultatif: true, valeur: valeurs.garage,
+          attributs: 'list="liste-garages" autocomplete="off" maxlength="60"'
         })}
       </div>
       <datalist id="liste-garages">${garages.map((g) => `<option value="${ui.echapper(g)}"></option>`).join('')}</datalist>
@@ -279,7 +277,7 @@
         <div class="cout-global">
           ${ui.champ({
             id: 'ev-cout', nom: 'coutGlobal', libelle: 'Coût total TTC', facultatif: true, valeur: format.montantSaisie(valeurs.coutGlobal),
-            attributs: 'class="saisie-courte" inputmode="decimal" autocomplete="off" placeholder="Ex. : 580,00"'
+            attributs: 'class="saisie-courte" data-saisie-montant inputmode="decimal" autocomplete="off" placeholder="Ex. : 580,00"'
           })}
         </div>
         <p class="cout-total" aria-live="polite" hidden></p>

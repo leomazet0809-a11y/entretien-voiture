@@ -43,7 +43,7 @@
   /* Formes */
   --rayon: 16px;
   --rayon-moyen: 12px;
-  --largeur-max: 1120px;
+  --largeur-max: 1600px;
   --gouttiere-g: max(16px, env(safe-area-inset-left, 0px));
   --gouttiere-d: max(16px, env(safe-area-inset-right, 0px));
 
@@ -199,13 +199,14 @@ a { color: inherit; }
   place-items: center;
 }
 
-/* Champ Rechercher, dans l'en-tête de l'onglet Entretiens */
+/* Champ Rechercher, dans l'en-tête de l'onglet Entretiens.
+   Son panneau de résultats s'aligne sur le groupe Rechercher + icônes (.outils-tableur) : il ne sort pas de l'écran. */
 .recherche {
-  position: relative;
-  flex: 1 1 240px;
-  max-width: 420px;
+  flex: 1 1 auto;
   min-width: 0;
 }
+
+.recherche-saisie { position: relative; }
 
 .recherche-icone {
   position: absolute;
@@ -241,9 +242,8 @@ a { color: inherit; }
   position: absolute;
   z-index: 15;
   top: calc(100% + 8px);
+  left: 0;
   right: 0;
-  /* Au moins 420 px de large : s'il le faut, le panneau déborde du champ vers la gauche */
-  width: max(100%, min(420px, 100vw - 32px));
   max-height: min(70dvh, 560px);
   padding: 6px;
   overflow-y: auto;
@@ -758,6 +758,15 @@ body:has(.fenetre[open]) { overflow: hidden; }
   overflow-y: auto;
 }
 
+/* Résumé d'un import CSV, ou liste des problèmes trouvés dans le fichier */
+.liste-import {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.45;
+}
+
 .fenetre-texte {
   margin: 0;
   color: var(--texte-2);
@@ -1093,9 +1102,10 @@ body:has(.fenetre[open]) { overflow: hidden; }
   background: var(--surface);
 }
 
+/* Largeurs : la colonne Détail prend toute la place qui reste (360 px au moins) ; Société a 240 px ;
+   les autres colonnes s'ajustent à leur contenu. En dessous, la zone défile de gauche à droite. */
 .tableur {
   width: 100%;
-  min-width: 1040px;
   border-collapse: separate;
   border-spacing: 0;
   font-size: 0.9375rem;
@@ -1127,7 +1137,9 @@ body:has(.fenetre[open]) { overflow: hidden; }
   position: sticky;
   left: 0;
   z-index: 1;
+  width: 1%;
   min-width: 124px;
+  white-space: nowrap;
   border-right: 1px solid var(--bordure);
 }
 
@@ -1141,21 +1153,26 @@ body:has(.fenetre[open]) { overflow: hidden; }
 
 .tableur .col-km,
 .tableur .col-cout {
+  width: 1%;
   font-family: var(--police-mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
+.tableur .col-categorie { width: 1%; }
+
 .tableur .col-cout { text-align: right; }
 
-.tableur .col-garage {
-  min-width: 120px;
-  font-weight: 500;
+.tableur .col-societe {
+  width: 240px;
+  min-width: 240px;
+  overflow-wrap: anywhere;
 }
 
-.tableur .col-texte {
-  min-width: 200px;
-  max-width: 340px;
+.tableur td.col-societe { font-weight: 500; }
+
+.tableur .col-detail {
+  min-width: 360px;
   white-space: pre-line;
   overflow-wrap: anywhere;
 }
@@ -1292,6 +1309,24 @@ body:has(.fenetre[open]) { overflow: hidden; }
 }
 
 .onglet-entete .tableur-resume { flex-basis: 100%; }
+
+/* Rechercher, puis les icônes Exporter et Importer : toujours ensemble sur la même ligne */
+.outils-tableur {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 300px;
+  max-width: 540px;
+  min-width: 0;
+}
+
+.outils-tableur .bouton-icone { flex: none; }
+
+.outils-tableur .bouton:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
 
 /* ---------- Kilométrage ---------- */
 
@@ -1474,6 +1509,7 @@ body:has(.fenetre[open]) { overflow: hidden; }
 .sections {
   display: grid;
   gap: 16px;
+  max-width: 880px; /* sur grand écran, les réglages gardent une largeur confortable à lire */
 }
 
 .section {
@@ -1650,7 +1686,7 @@ body:has(.fenetre[open]) { overflow: hidden; }
 /* ---------- Grands écrans ---------- */
 
 /* Le tableur tient en largeur : la ligne des titres de colonnes reste visible sous la barre du haut pendant le défilement */
-@media (min-width: 1100px) {
+@media (min-width: 1240px) {
   .tableur-zone { overflow: visible; }
 
   .tableur th { top: 69px; } /* hauteur de la barre du haut */
