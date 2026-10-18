@@ -1,34 +1,40 @@
-/* Stockage des données dans le navigateur (IndexedDB).
-   C'est le seul fichier à adapter le jour où les données iront dans Google Drive. */
+/* Stockage des données en ligne : Cloud Firestore pour les fiches, Firebase Storage pour les fichiers joints.
+   Chaque compte a son propre espace : users/{uid}/voitures, users/{uid}/evenements…
+   Les tables sont écoutées en temps réel et gardées en mémoire : les écrans les lisent sans attendre le réseau
+   (et sans consommer de lectures Firestore), et une modification faite sur un autre appareil apparaît d'elle-même.
+   Firestore garde aussi une copie sur l'appareil : l'application reste utilisable sans réseau
+   (sauf pour envoyer de nouveaux documents) et envoie les modifications dès que la connexion revient. */
 (function (EV) {
   'use strict';
 
-  const NOM_BASE = 'entretien-voiture';
-  const VERSION = 4;
   // Un événement (un passage : date, km, garage, documents) contient ses lignes d'entretien.
   const TABLES = ['voitures', 'categories', 'evenements', 'documents', 'releves'];
-  const TABLES_PAR_VOITURE = ['evenements', 'documents', 'releves'];
+  const TAILLE_LOT = 400; // Firestore accepte 500 écritures par lot
 
-  // Catégories créées une seule fois, à la première ouverture ; l'utilisateur les modifie ensuite à sa guise.
+  // Catégories créées une seule fois par compte ; l'utilisateur les modifie ensuite à sa guise.
   const CATEGORIES_DE_DEPART = ['Révision / vidange', 'Contrôle technique', 'Freinage', 'Pneumatiques',
     'Distribution', 'Climatisation', 'Filtres', 'Moteur', 'Batterie / électricité', 'Carrosserie / vitrage', 'Divers'];
 
-  let base = null;     // base IndexedDB ouverte
-  let memoire = null;  // repli en mémoire vive si le navigateur refuse IndexedDB
+  let db = null;
+  let fichiers = null;      // Firebase Storage
+  let uid = null;
+  let espace = null;        // document users/{uid}
+  const donnees = {};       // nom de table → Map(id → objet), tenue à jour par l'écoute en temps réel
+  const arretsEcoute = [];
 
-  function attendre(requete) {
-    return new Promise((ok, ko) => {
-      requete.onsuccess = () => ok(requete.result);
-      requete.onerror = () => ko(requete.error);
-    });
+  function table(nom) {
+    return espace.collection(nom);
   }
 
-  function finTransaction(transaction) {
-    return new Promise((ok, ko) => {
-      transaction.oncomplete = () => ok();
-      transaction.onerror = () => ko(transaction.error);
-      transaction.onabort = () => ko(transaction.error);
-    });
+  function copie(objet) {
+    return structuredClone(objet);
+  }
+
+  // Les écritures partent en arrière-plan : l'écran n'attend pas le réseau.
+  // En cas de refus du serveur, on prévient l'utilisateur.
+  function signalerEchec(erreur) {
+    console.error(erreur);
+    EV.ui.toast("Une modification n'a pas pu être enregistrée en ligne. Vérifiez votre connexion, puis réessayez.");
   }
 
   function nouvelId() {
@@ -37,246 +43,300 @@
     return Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
   }
 
+  // Donne un identifiant et les dates de création et de modification.
+  function horodater(objet) {
+    const maintenant = new Date().toISOString();
+    return { ...objet, id: objet.id || nouvelId(), creeLe: objet.creeLe || maintenant, modifieLe: maintenant };
+  }
+
   // Relevé kilométrique tiré d'un événement daté avec un kilométrage ; son identifiant découle de l'événement.
   function idReleveDeLEvenement(evenementId) {
     return `evenement-${evenementId}`;
   }
 
-  function releveDeLEvenement(evenement, maintenant) {
+  function releveDeLEvenement(evenement) {
     if (!evenement.date || evenement.km === null || evenement.km === undefined) return null;
-    return {
+    return horodater({
       id: idReleveDeLEvenement(evenement.id),
       voitureId: evenement.voitureId,
       evenementId: evenement.id,
       date: evenement.date,
       km: evenement.km,
-      source: 'evenement',
-      creeLe: maintenant,
-      modifieLe: maintenant
-    };
-  }
-
-  function categoriesDeDepart() {
-    const maintenant = new Date().toISOString();
-    return CATEGORIES_DE_DEPART.map((nom) => ({ id: nouvelId(), nom, creeLe: maintenant, modifieLe: maintenant }));
-  }
-
-  // Crée ou met à niveau la base. Chaque version ne fait que ce qui manque, les données existantes sont gardées.
-  function ouvrirBase() {
-    return new Promise((ok, ko) => {
-      const requete = indexedDB.open(NOM_BASE, VERSION);
-      requete.onupgradeneeded = (evenement) => {
-        const db = requete.result;
-        if (evenement.oldVersion < 1) {
-          db.createObjectStore('voitures', { keyPath: 'id' });
-          db.createObjectStore('categories', { keyPath: 'id' });
-          db.createObjectStore('entretiens', { keyPath: 'id' }).createIndex('voitureId', 'voitureId');
-          db.createObjectStore('releves', { keyPath: 'id' }).createIndex('voitureId', 'voitureId');
-          const documents = db.createObjectStore('documents', { keyPath: 'id' });
-          documents.createIndex('voitureId', 'voitureId');
-          documents.createIndex('entretienId', 'entretienId');
-        }
-        if (evenement.oldVersion < 2) {
-          const categories = requete.transaction.objectStore('categories');
-          categoriesDeDepart().forEach((categorie) => categories.put(categorie));
-        }
-        if (evenement.oldVersion < 3) {
-          // Les entretiens deviennent des lignes à l'intérieur d'un événement ; la table « entretiens » n'a jamais servi.
-          db.createObjectStore('evenements', { keyPath: 'id' }).createIndex('voitureId', 'voitureId');
-          if (db.objectStoreNames.contains('entretiens')) db.deleteObjectStore('entretiens');
-          const documents = requete.transaction.objectStore('documents');
-          if (documents.indexNames.contains('entretienId')) documents.deleteIndex('entretienId');
-          documents.createIndex('evenementId', 'evenementId');
-        }
-        if (evenement.oldVersion < 4) {
-          // Les événements déjà saisis donnent leur relevé kilométrique.
-          const maintenant = new Date().toISOString();
-          const releves = requete.transaction.objectStore('releves');
-          const curseur = requete.transaction.objectStore('evenements').openCursor();
-          curseur.onsuccess = () => {
-            if (!curseur.result) return;
-            const releve = releveDeLEvenement(curseur.result.value, maintenant);
-            if (releve) releves.put(releve);
-            curseur.result.continue();
-          };
-        }
-      };
-      requete.onblocked = () => {
-        EV.ui.toast("Fermez les autres onglets de l'application pour terminer sa mise à jour.");
-      };
-      requete.onsuccess = () => {
-        const db = requete.result;
-        // Si une version plus récente s'ouvre dans un autre onglet, on lui laisse la place.
-        db.onversionchange = () => {
-          db.close();
-          location.reload();
-        };
-        ok(db);
-      };
-      requete.onerror = () => ko(requete.error);
+      source: 'evenement'
     });
   }
 
-  // Renvoie true si les données seront conservées, false si elles ne vivent que le temps de la visite.
-  async function demarrer() {
+  // Lot d'écritures qui met aussi à jour les données en mémoire, pour que l'écran suivant les voie aussitôt.
+  function nouveauLot() {
+    const operations = [];
+    return {
+      ecrire(nom, objet) {
+        donnees[nom].set(objet.id, copie(objet));
+        operations.push((lot) => lot.set(table(nom).doc(objet.id), objet));
+      },
+      effacer(nom, id) {
+        donnees[nom].delete(id);
+        operations.push((lot) => lot.delete(table(nom).doc(id)));
+      },
+      // Écriture d'un document hors des tables gardées en mémoire (réglages du compte).
+      ecrireDocument(reference, contenu) {
+        operations.push((lot) => lot.set(reference, contenu));
+      },
+      // Envoie par paquets de TAILLE_LOT ; la promesse se résout quand le serveur a tout reçu.
+      envoyer() {
+        const envois = [];
+        for (let i = 0; i < operations.length; i += TAILLE_LOT) {
+          const lot = db.batch();
+          operations.slice(i, i + TAILLE_LOT).forEach((operation) => operation(lot));
+          envois.push(lot.commit());
+        }
+        return Promise.all(envois);
+      }
+    };
+  }
+
+  /* ---------- Démarrage et écoute en temps réel ---------- */
+
+  // Une modification arrivée d'un autre appareil : on réaffiche l'écran,
+  // mais jamais pendant une saisie (fenêtre ouverte ou champ de la page en cours d'utilisation).
+  let reaffichagePrevu = null;
+  function saisieEnCours() {
+    const actif = document.activeElement;
+    return Boolean(document.querySelector('dialog[open]')
+      || (actif && actif.closest('#contenu') && actif.matches('input, textarea, select')));
+  }
+
+  function reafficher(delai = 300) {
+    clearTimeout(reaffichagePrevu);
+    reaffichagePrevu = setTimeout(() => {
+      if (saisieEnCours()) reafficher(2000);
+      else EV.routeur.afficher();
+    }, delai);
+  }
+
+  function ecouter(nom) {
+    return new Promise((pret, echec) => {
+      let premier = true;
+      const arreter = table(nom).onSnapshot((cliche) => {
+        const contenu = new Map();
+        cliche.forEach((document) => contenu.set(document.id, document.data()));
+        donnees[nom] = contenu;
+        if (premier) {
+          premier = false;
+          pret();
+        } else if (!cliche.metadata.hasPendingWrites) {
+          reafficher();
+        }
+      }, (erreur) => {
+        if (premier) {
+          premier = false;
+          echec(erreur);
+        } else {
+          signalerEchec(erreur);
+        }
+      });
+      arretsEcoute.push(arreter);
+    });
+  }
+
+  // Identifiant fixe d'une catégorie de départ (« Révision / vidange » → « depart-revision-vidange ») :
+  // si la liste de départ était créée deux fois (deux appareils à la fois), les mêmes fiches seraient réécrites
+  // au lieu d'être dupliquées.
+  function idCategorieDeDepart(nom) {
+    return `depart-${nom.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+  }
+
+  // Première connexion d'un compte : on crée la liste de catégories de départ, avec la mention « déjà fait »
+  // dans la même écriture. On ne le fait que si le serveur confirme que c'est la première fois.
+  async function initialiserCategories() {
+    const reglages = espace.collection('reglages').doc('general');
+    let cliche;
     try {
-      base = await ouvrirBase();
-      return true;
+      cliche = await reglages.get();
     } catch (e) {
-      memoire = Object.fromEntries(TABLES.map((table) => [table, new Map()]));
-      categoriesDeDepart().forEach((categorie) => memoire.categories.set(categorie.id, categorie));
-      return false;
-    }
-  }
-
-  async function tous(table) {
-    if (memoire) return [...memoire[table].values()].map((o) => structuredClone(o));
-    return attendre(base.transaction(table).objectStore(table).getAll());
-  }
-
-  async function lire(table, id) {
-    if (memoire) {
-      const objet = memoire[table].get(id);
-      return objet ? structuredClone(objet) : undefined;
-    }
-    return attendre(base.transaction(table).objectStore(table).get(id));
-  }
-
-  async function parVoiture(table, voitureId) {
-    if (memoire) return (await tous(table)).filter((o) => o.voitureId === voitureId);
-    return attendre(base.transaction(table).objectStore(table).index('voitureId').getAll(voitureId));
-  }
-
-  // Ajoute ou met à jour un objet ; lui donne un identifiant et ses dates de création et de modification.
-  async function enregistrer(table, objet) {
-    const maintenant = new Date().toISOString();
-    const complet = { ...objet, id: objet.id || nouvelId(), creeLe: objet.creeLe || maintenant, modifieLe: maintenant };
-    if (memoire) {
-      memoire[table].set(complet.id, structuredClone(complet));
-    } else {
-      const transaction = base.transaction(table, 'readwrite');
-      transaction.objectStore(table).put(complet);
-      await finTransaction(transaction);
-    }
-    return complet;
-  }
-
-  async function supprimer(table, id) {
-    if (memoire) {
-      memoire[table].delete(id);
       return;
     }
-    const transaction = base.transaction(table, 'readwrite');
-    transaction.objectStore(table).delete(id);
-    await finTransaction(transaction);
+    if (cliche.exists || cliche.metadata.fromCache) return;
+    const lot = nouveauLot();
+    CATEGORIES_DE_DEPART.forEach((nom) => lot.ecrire('categories', horodater({ id: idCategorieDeDepart(nom), nom })));
+    lot.ecrireDocument(reglages, { categoriesDeDepart: true, creeLe: new Date().toISOString() });
+    lot.envoyer().catch(signalerEchec);
   }
 
-  // Supprime une voiture et tout ce qui lui est rattaché, en une seule opération.
-  async function supprimerVoiture(id) {
-    if (memoire) {
-      memoire.voitures.delete(id);
-      TABLES_PAR_VOITURE.forEach((table) => {
-        memoire[table].forEach((objet, cle) => {
-          if (objet.voitureId === id) memoire[table].delete(cle);
-        });
-      });
-      return;
+  // Renvoie true : les données sont toujours conservées (en ligne, avec une copie sur l'appareil si possible).
+  async function demarrer(identifiant) {
+    uid = identifiant;
+    const emulateurs = EV.firebaseEmulateurs; // uniquement pour tester en local avec les émulateurs Firebase
+    db = firebase.firestore();
+    db.settings({ ignoreUndefinedProperties: true });
+    if (emulateurs) db.useEmulator(emulateurs.firestore.hote, emulateurs.firestore.port);
+    try {
+      await db.enablePersistence({ synchronizeTabs: true });
+    } catch (e) {
+      // Navigation privée ou navigateur ancien : tout fonctionne, mais sans copie hors ligne.
+      console.warn('Copie hors ligne indisponible :', e.code || e);
     }
-    const transaction = base.transaction(['voitures', ...TABLES_PAR_VOITURE], 'readwrite');
-    transaction.objectStore('voitures').delete(id);
-    TABLES_PAR_VOITURE.forEach((table) => {
-      const magasin = transaction.objectStore(table);
-      const curseur = magasin.index('voitureId').openKeyCursor(IDBKeyRange.only(id));
-      curseur.onsuccess = () => {
-        if (!curseur.result) return;
-        magasin.delete(curseur.result.primaryKey);
-        curseur.result.continue();
-      };
-    });
-    await finTransaction(transaction);
+    fichiers = firebase.storage();
+    if (emulateurs) fichiers.useEmulator(emulateurs.storage.hote, emulateurs.storage.port);
+
+    espace = db.collection('users').doc(uid);
+    await Promise.all(TABLES.map(ecouter));
+    await initialiserCategories();
+    return true;
   }
 
-  // Documents joints à un événement.
+  /* ---------- Lecture (depuis la mémoire, tenue à jour en temps réel) ---------- */
+
+  async function tous(nom) {
+    return [...donnees[nom].values()].map(copie);
+  }
+
+  async function lire(nom, id) {
+    const objet = donnees[nom].get(id);
+    return objet ? copie(objet) : undefined;
+  }
+
+  async function parVoiture(nom, voitureId) {
+    return (await tous(nom)).filter((o) => o.voitureId === voitureId);
+  }
+
   async function documentsDeLEvenement(evenementId) {
-    if (memoire) return (await tous('documents')).filter((d) => d.evenementId === evenementId);
-    return attendre(base.transaction('documents').objectStore('documents').index('evenementId').getAll(evenementId));
+    return (await tous('documents')).filter((d) => d.evenementId === evenementId);
   }
 
-  // Enregistre un événement, ses changements de documents et son relevé kilométrique, en une seule opération.
-  // `ajouts` : documents à joindre ({ nom, type, taille, contenu }) ; `suppressions` : identifiants à retirer.
-  async function enregistrerEvenement(evenement, { ajouts = [], suppressions = [] } = {}) {
-    const maintenant = new Date().toISOString();
-    const complet = { ...evenement, id: evenement.id || nouvelId(), creeLe: evenement.creeLe || maintenant, modifieLe: maintenant };
-    const nouveaux = ajouts.map((fichier) => ({
-      id: nouvelId(),
-      evenementId: complet.id,
-      voitureId: complet.voitureId,
-      nom: fichier.nom,
-      type: fichier.type,
-      taille: fichier.taille,
-      contenu: fichier.contenu,
-      creeLe: maintenant,
-      modifieLe: maintenant
-    }));
+  /* ---------- Écriture ---------- */
 
-    const releve = releveDeLEvenement(complet, maintenant);
-
-    if (memoire) {
-      memoire.evenements.set(complet.id, structuredClone(complet));
-      suppressions.forEach((id) => memoire.documents.delete(id));
-      memoire.documents.forEach((document) => {
-        if (document.evenementId === complet.id) document.voitureId = complet.voitureId;
-      });
-      nouveaux.forEach((document) => memoire.documents.set(document.id, document));
-      if (releve) memoire.releves.set(releve.id, releve);
-      else memoire.releves.delete(idReleveDeLEvenement(complet.id));
-      return complet;
-    }
-
-    const transaction = base.transaction(['evenements', 'documents', 'releves'], 'readwrite');
-    transaction.objectStore('evenements').put(complet);
-    // Le relevé suit l'événement : créé, mis à jour, ou retiré si la date ou le kilométrage manque.
-    if (releve) transaction.objectStore('releves').put(releve);
-    else transaction.objectStore('releves').delete(idReleveDeLEvenement(complet.id));
-    const documents = transaction.objectStore('documents');
-    suppressions.forEach((id) => documents.delete(id));
-    // Si l'événement change de voiture, ses documents le suivent.
-    const existants = documents.index('evenementId').getAll(complet.id);
-    existants.onsuccess = () => {
-      existants.result.forEach((document) => {
-        if (document.voitureId !== complet.voitureId) documents.put({ ...document, voitureId: complet.voitureId });
-      });
-    };
-    nouveaux.forEach((document) => documents.put(document));
-    await finTransaction(transaction);
+  // Ajoute ou met à jour un objet.
+  async function enregistrer(nom, objet) {
+    const complet = horodater(objet);
+    const lot = nouveauLot();
+    lot.ecrire(nom, complet);
+    lot.envoyer().catch(signalerEchec);
     return complet;
   }
 
-  // Supprime un événement, ses documents joints et son relevé kilométrique, en une seule opération.
-  async function supprimerEvenement(id) {
-    if (memoire) {
-      memoire.evenements.delete(id);
-      memoire.releves.delete(idReleveDeLEvenement(id));
-      memoire.documents.forEach((document, cle) => {
-        if (document.evenementId === id) memoire.documents.delete(cle);
-      });
-      return;
+  async function supprimer(nom, id) {
+    const lot = nouveauLot();
+    lot.effacer(nom, id);
+    lot.envoyer().catch(signalerEchec);
+  }
+
+  /* ---------- Fichiers joints (Firebase Storage) ---------- */
+
+  function cheminFichier(id) {
+    return `users/${uid}/documents/${id}`;
+  }
+
+  // Envoie les fichiers un par un ; renvoie les fiches des documents, avec l'adresse pour les ouvrir.
+  // `progression(fraction)` suit l'envoi. En cas d'échec, les fichiers déjà envoyés sont retirés.
+  async function envoyerFichiers(ajouts, evenement, progression) {
+    const total = ajouts.reduce((somme, f) => somme + f.taille, 0) || 1;
+    const envoyes = ajouts.map(() => 0);
+    const fiches = [];
+    try {
+      for (const [rang, fichier] of ajouts.entries()) {
+        const id = nouvelId();
+        const chemin = cheminFichier(id);
+        const reference = fichiers.ref(chemin);
+        const envoi = reference.put(fichier.contenu, {
+          contentType: fichier.type,
+          contentDisposition: `inline; filename*=UTF-8''${encodeURIComponent(fichier.nom)}`
+        });
+        envoi.on('state_changed', (etat) => {
+          envoyes[rang] = etat.bytesTransferred;
+          if (progression) progression(envoyes.reduce((a, b) => a + b, 0) / total);
+        });
+        await envoi;
+        fiches.push(horodater({
+          id,
+          evenementId: evenement.id,
+          voitureId: evenement.voitureId,
+          nom: fichier.nom,
+          type: fichier.type,
+          taille: fichier.taille,
+          chemin,
+          url: await reference.getDownloadURL()
+        }));
+      }
+    } catch (erreur) {
+      fiches.forEach((fiche) => fichiers.ref(fiche.chemin).delete().catch(() => {}));
+      throw erreur;
     }
-    const transaction = base.transaction(['evenements', 'documents', 'releves'], 'readwrite');
-    transaction.objectStore('evenements').delete(id);
-    transaction.objectStore('releves').delete(idReleveDeLEvenement(id));
-    const documents = transaction.objectStore('documents');
-    const curseur = documents.index('evenementId').openKeyCursor(IDBKeyRange.only(id));
-    curseur.onsuccess = () => {
-      if (!curseur.result) return;
-      documents.delete(curseur.result.primaryKey);
-      curseur.result.continue();
-    };
-    await finTransaction(transaction);
+    return fiches;
+  }
+
+  function supprimerFichiers(documents) {
+    documents.forEach((document) => {
+      if (!document.chemin) return;
+      fichiers.ref(document.chemin).delete().catch((erreur) => {
+        if (erreur.code !== 'storage/object-not-found') console.warn("Un fichier n'a pas pu être supprimé :", erreur);
+      });
+    });
+  }
+
+  /* ---------- Événements, voitures : écritures groupées ---------- */
+
+  // Enregistre un événement, ses documents et son relevé kilométrique.
+  // Les nouveaux fichiers partent d'abord : sans réseau, rien n'est enregistré et l'utilisateur peut réessayer.
+  // `ajouts` : documents à joindre ({ nom, type, taille, contenu }) ; `suppressions` : identifiants à retirer.
+  async function enregistrerEvenement(evenement, { ajouts = [], suppressions = [], progression } = {}) {
+    const complet = horodater(evenement);
+    const nouveaux = ajouts.length ? await envoyerFichiers(ajouts, complet, progression) : [];
+    const retires = suppressions.map((id) => donnees.documents.get(id)).filter(Boolean);
+
+    const lot = nouveauLot();
+    lot.ecrire('evenements', complet);
+    // Le relevé suit l'événement : créé, mis à jour, ou retiré si la date ou le kilométrage manque.
+    const releve = releveDeLEvenement(complet);
+    if (releve) lot.ecrire('releves', releve);
+    else if (donnees.releves.has(idReleveDeLEvenement(complet.id))) lot.effacer('releves', idReleveDeLEvenement(complet.id));
+    // Si l'événement change de voiture, ses documents le suivent.
+    [...donnees.documents.values()]
+      .filter((d) => d.evenementId === complet.id && d.voitureId !== complet.voitureId && !suppressions.includes(d.id))
+      .forEach((d) => lot.ecrire('documents', { ...d, voitureId: complet.voitureId }));
+    nouveaux.forEach((d) => lot.ecrire('documents', d));
+    retires.forEach((d) => lot.effacer('documents', d.id));
+    // Les fichiers retirés ne disparaissent qu'une fois les fiches mises à jour.
+    lot.envoyer().then(() => supprimerFichiers(retires)).catch(signalerEchec);
+    return complet;
+  }
+
+  // Supprime un événement, ses documents et son relevé kilométrique.
+  async function supprimerEvenement(id) {
+    const documents = [...donnees.documents.values()].filter((d) => d.evenementId === id);
+    const lot = nouveauLot();
+    lot.effacer('evenements', id);
+    if (donnees.releves.has(idReleveDeLEvenement(id))) lot.effacer('releves', idReleveDeLEvenement(id));
+    documents.forEach((d) => lot.effacer('documents', d.id));
+    lot.envoyer().then(() => supprimerFichiers(documents)).catch(signalerEchec);
+  }
+
+  // Supprime une voiture et tout ce qui lui est rattaché.
+  async function supprimerVoiture(id) {
+    const documents = [...donnees.documents.values()].filter((d) => d.voitureId === id);
+    const lot = nouveauLot();
+    lot.effacer('voitures', id);
+    ['evenements', 'releves', 'documents'].forEach((nom) => {
+      [...donnees[nom].values()].filter((o) => o.voitureId === id).forEach((o) => lot.effacer(nom, o.id));
+    });
+    lot.envoyer().then(() => supprimerFichiers(documents)).catch(signalerEchec);
+  }
+
+  // Avant la déconnexion : envoie ce qui reste en attente, puis efface la copie gardée sur l'appareil.
+  async function arreter() {
+    if (!db) return;
+    arretsEcoute.forEach((arreterEcoute) => arreterEcoute());
+    try {
+      await Promise.race([db.waitForPendingWrites(), new Promise((ok) => setTimeout(ok, 5000))]);
+      await db.terminate();
+      await db.clearPersistence();
+    } catch (e) {
+      console.warn("La copie locale n'a pas pu être effacée :", e);
+    }
   }
 
   EV.stockage = {
     demarrer, nouvelId, tous, lire, parVoiture, enregistrer, supprimer,
-    supprimerVoiture, documentsDeLEvenement, enregistrerEvenement, supprimerEvenement
+    supprimerVoiture, documentsDeLEvenement, enregistrerEvenement, supprimerEvenement, arreter
   };
 })(window.EV = window.EV || {});

@@ -63,10 +63,26 @@
     lien.remove();
   }
 
+  // Un document enregistré s'ouvre depuis son adresse en ligne (Firebase Storage) ;
+  // un document pas encore enregistré, depuis le fichier choisi sur l'appareil.
+  function source(document, urls) {
+    return document.url || urls.pour(document.contenu);
+  }
+
+  // Téléchargement d'un fichier encore sur l'appareil. Un document en ligne s'ouvre dans un nouvel onglet,
+  // d'où le navigateur permet de l'enregistrer.
   function telecharger(document) {
+    if (document.url) {
+      cliquerLien({ href: document.url, target: '_blank', rel: 'noopener' });
+      return;
+    }
     const url = URL.createObjectURL(document.contenu);
     cliquerLien({ href: url, download: document.nom });
     setTimeout(() => URL.revokeObjectURL(url), 60 * 1000);
+  }
+
+  function boutonOnglet(document, classe = 'bouton bouton-secondaire bouton-telecharger') {
+    return `<a class="${classe}" href="${ui.echapper(document.url)}" target="_blank" rel="noopener">${ui.icone('ouvrir', 18)}<span>Ouvrir dans un nouvel onglet</span></a>`;
   }
 
   async function afficherImage(document) {
@@ -77,10 +93,12 @@
       annuler: false,
       libelleValider: 'Fermer',
       contenu: `
-        <img class="apercu-image" src="${urls.pour(document.contenu)}" alt="${ui.echapper(document.nom)}">
-        <button type="button" class="bouton bouton-secondaire bouton-telecharger" data-telecharger>${ui.icone('telecharger', 18)}<span>Télécharger</span></button>`,
+        <img class="apercu-image" src="${ui.echapper(source(document, urls))}" alt="${ui.echapper(document.nom)}">
+        ${document.url
+          ? boutonOnglet(document)
+          : `<button type="button" class="bouton bouton-secondaire bouton-telecharger" data-telecharger>${ui.icone('telecharger', 18)}<span>Télécharger</span></button>`}`,
       preparer: (formulaire) => {
-        formulaire.querySelector('[data-telecharger]').addEventListener('click', () => telecharger(document));
+        formulaire.querySelector('[data-telecharger]')?.addEventListener('click', () => telecharger(document));
       }
     });
     urls.liberer();
@@ -92,20 +110,28 @@
       afficherImage(document);
       return;
     }
+    if (document.url) {
+      cliquerLien({ href: document.url, target: '_blank', rel: 'noopener' });
+      return;
+    }
     const url = URL.createObjectURL(document.contenu);
     cliquerLien({ href: url, target: '_blank', rel: 'noopener' });
     setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
   }
 
-  // Un document dans une liste. `retirer` : bouton pour le retirer (formulaire) ; sinon bouton Télécharger.
+  // Un document dans une liste. `retirer` : bouton pour le retirer (formulaire) ;
+  // sinon, lien vers un nouvel onglet (document en ligne) ou bouton Télécharger.
   function element(document, urls, { retirer = false } = {}) {
     const nom = ui.echapper(document.nom);
     const vignette = estImage(document)
-      ? `<img src="${urls.pour(document.contenu)}" alt="">`
+      ? `<img src="${ui.echapper(source(document, urls))}" alt="" loading="lazy">`
       : ui.icone('document', 22);
-    const action = retirer
-      ? `<button type="button" class="bouton bouton-icone bouton-texte-danger" data-retirer-document aria-label="Retirer ${nom}" title="Retirer">${ui.icone('corbeille', 18)}</button>`
-      : `<button type="button" class="bouton bouton-icone" data-telecharger-document aria-label="Télécharger ${nom}" title="Télécharger">${ui.icone('telecharger', 18)}</button>`;
+    let action = `<button type="button" class="bouton bouton-icone" data-telecharger-document aria-label="Télécharger ${nom}" title="Télécharger">${ui.icone('telecharger', 18)}</button>`;
+    if (retirer) {
+      action = `<button type="button" class="bouton bouton-icone bouton-texte-danger" data-retirer-document aria-label="Retirer ${nom}" title="Retirer">${ui.icone('corbeille', 18)}</button>`;
+    } else if (document.url) {
+      action = `<a class="bouton bouton-icone" href="${ui.echapper(document.url)}" target="_blank" rel="noopener" aria-label="Ouvrir ${nom} dans un nouvel onglet" title="Ouvrir dans un nouvel onglet">${ui.icone('ouvrir', 18)}</a>`;
+    }
     return `
       <li class="document" data-document="${document.id}">
         <button type="button" class="document-ouvrir" data-ouvrir-document aria-label="Ouvrir ${nom}">
@@ -135,7 +161,7 @@
         formulaire.querySelectorAll('.document').forEach((ligne) => {
           const document = documents.find((d) => d.id === ligne.dataset.document);
           ligne.querySelector('[data-ouvrir-document]').addEventListener('click', () => ouvrir(document));
-          ligne.querySelector('[data-telecharger-document]').addEventListener('click', () => telecharger(document));
+          ligne.querySelector('[data-telecharger-document]')?.addEventListener('click', () => telecharger(document));
         });
       }
     });

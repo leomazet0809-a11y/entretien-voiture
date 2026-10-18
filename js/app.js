@@ -1,4 +1,4 @@
-/* Démarrage : branche la barre du haut puis affiche l'écran demandé. */
+/* Démarrage : branche la barre du haut, connecte l'utilisateur, puis affiche l'écran demandé. */
 (function (EV) {
   'use strict';
 
@@ -7,6 +7,22 @@
   function voitureAffichee() {
     const [ecran, id] = location.hash.replace(/^#/, '').split('/');
     return ecran === 'voiture' && id ? decodeURIComponent(id) : null;
+  }
+
+  // L'espace en ligne ne répond pas comme prévu : on explique quoi faire plutôt que de laisser un écran vide.
+  function afficherProbleme(erreur) {
+    const refus = erreur && erreur.code === 'permission-denied';
+    const titre = refus ? 'Accès à vos données refusé' : 'Vos données ne sont pas accessibles';
+    const texte = refus
+      ? 'Firebase refuse l\'accès à votre espace. Vérifiez que les règles de sécurité de Firestore sont publiées (fichier firestore.rules, voir le README).'
+      : 'La connexion à votre espace en ligne n\'a pas abouti. Vérifiez votre connexion Internet, puis réessayez.';
+    document.getElementById('contenu').innerHTML = `
+      <section class="vide">
+        <h2>${ui.echapper(titre)}</h2>
+        <p>${ui.echapper(texte)}</p>
+        <button class="bouton bouton-principal" type="button" data-reessayer>Réessayer</button>
+      </section>`;
+    document.querySelector('[data-reessayer]').addEventListener('click', () => location.reload());
   }
 
   async function demarrer() {
@@ -21,7 +37,16 @@
     document.getElementById('bouton-km').addEventListener('click', () => {
       EV.fenetreReleve.nouveau(voitureAffichee());
     });
-    const donneesConservees = await EV.stockage.demarrer();
+
+    const utilisateur = await EV.compte.demarrer();
+    let donneesConservees;
+    try {
+      donneesConservees = await EV.stockage.demarrer(utilisateur.uid);
+    } catch (erreur) {
+      console.error(erreur);
+      afficherProbleme(erreur);
+      return;
+    }
     document.getElementById('alerte-stockage').hidden = donneesConservees;
     EV.panneauRecherche.brancher();
 

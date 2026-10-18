@@ -187,6 +187,22 @@
     afficher();
   }
 
+  // Message clair quand l'envoi des documents vers Firebase Storage échoue. Rien n'est alors enregistré.
+  function messageEnvoi(erreur) {
+    switch (erreur && erreur.code) {
+      case 'hors-ligne':
+      case 'storage/retry-limit-exceeded':
+        return "Pas de connexion Internet : les documents n'ont pas pu être envoyés. Rien n'a été enregistré. Réessayez une fois connecté, ou retirez les nouveaux documents pour enregistrer le reste.";
+      case 'storage/unauthorized':
+      case 'storage/unauthenticated':
+        return "Firebase Storage a refusé l'envoi. Vérifiez que Storage est activé et que ses règles de sécurité sont en place (voir le README). Rien n'a été enregistré.";
+      case 'storage/quota-exceeded':
+        return "L'espace de stockage des documents est plein ou le forfait Firebase ne permet pas l'envoi. Rien n'a été enregistré.";
+      default:
+        return "Les documents n'ont pas pu être envoyés. Rien n'a été enregistré : réessayez.";
+    }
+  }
+
   // Lit le formulaire et renvoie la saisie brute, plus le numéro de chaque bloc de ligne.
   function lireSaisie(formulaire) {
     const champs = formulaire.elements;
@@ -287,6 +303,7 @@
             <input type="file" class="masque" accept="image/*" capture="environment" data-joindre>
           </label>
         </div>
+        <p class="envoi-documents" data-envoi-documents aria-live="polite" hidden></p>
         <p class="champ-erreur" data-erreur-documents role="alert" hidden></p>
       </fieldset>`;
 
@@ -312,12 +329,39 @@
           if (erreursLigne.cout) erreurs[`ligne-${numeros[rang]}-cout`] = erreursLigne.cout;
         });
         if (!ui.afficherErreurs(formulaire, erreurs)) return false;
-        const enregistre = await evenements.enregistrer({ ...evenement, ...verification.valeurs }, {
-          ajouts: etatDocuments.nouveaux.map(({ nom, type, taille, contenu }) => ({ nom, type, taille, contenu })),
-          suppressions: [...etatDocuments.supprimes]
-        });
-        resultat = { action: 'enregistre', evenement: enregistre };
-        return true;
+
+        // Les nouveaux documents partent vers Firebase Storage avant l'enregistrement de l'événement.
+        const ajouts = etatDocuments.nouveaux.map(({ nom, type, taille, contenu }) => ({ nom, type, taille, contenu }));
+        const zoneErreur = formulaire.querySelector('[data-erreur-documents]');
+        const zoneEnvoi = formulaire.querySelector('[data-envoi-documents]');
+        zoneErreur.hidden = true;
+        if (ajouts.length && !navigator.onLine) {
+          zoneErreur.textContent = messageEnvoi({ code: 'hors-ligne' });
+          zoneErreur.hidden = false;
+          zoneErreur.scrollIntoView({ block: 'nearest' });
+          return false;
+        }
+        try {
+          if (ajouts.length) {
+            zoneEnvoi.textContent = 'Envoi des documents…';
+            zoneEnvoi.hidden = false;
+          }
+          const enregistre = await evenements.enregistrer({ ...evenement, ...verification.valeurs }, {
+            ajouts,
+            suppressions: [...etatDocuments.supprimes],
+            progression: (fraction) => { zoneEnvoi.textContent = `Envoi des documents… ${Math.round(fraction * 100)} %`; }
+          });
+          resultat = { action: 'enregistre', evenement: enregistre };
+          return true;
+        } catch (erreur) {
+          console.error(erreur);
+          zoneErreur.textContent = messageEnvoi(erreur);
+          zoneErreur.hidden = false;
+          zoneErreur.scrollIntoView({ block: 'nearest' });
+          return false;
+        } finally {
+          zoneEnvoi.hidden = true;
+        }
       },
       supprimer: evenement && (async () => {
         const nombre = evenement.lignes.length;

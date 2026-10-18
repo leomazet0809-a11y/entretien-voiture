@@ -4,12 +4,15 @@ Application web pour suivre l'entretien de ses voitures : un dossier par voiture
 
 Un **événement** est un passage (au garage ou chez soi) : une date, un kilométrage, un garage, des documents, et un ou plusieurs **entretiens** (catégorie, détail, commentaire). Le coût se saisit globalement ou entretien par entretien.
 
-Elle fonctionne sur ordinateur et sur smartphone. Les données restent sur l'appareil, dans le navigateur : rien n'est envoyé sur Internet.
+Elle fonctionne sur ordinateur et sur smartphone. On s'y connecte avec un compte Google : les données sont enregistrées en ligne dans un espace propre à chaque compte, et sont donc les mêmes sur tous les appareils, mises à jour en temps réel.
+
+- Les fiches (voitures, catégories, événements, relevés) sont dans **Cloud Firestore**. Une copie reste sur l'appareil : l'application fonctionne sans réseau et envoie les modifications au retour de la connexion.
+- Les documents joints (factures, photos) sont dans **Firebase Storage**. Leur envoi demande une connexion.
 
 ## Ouvrir l'application
 
-- **En ligne** : l'adresse sera ajoutée à l'étape 9, une fois l'application publiée.
-- **Sur l'ordinateur, sans rien installer** : télécharger le dossier, puis ouvrir `index.html` dans Chrome, Edge ou Firefox.
+- **En ligne** : https://leomazet0809-a11y.github.io/entretien-voiture/ (GitHub Pages).
+- **Sur l'ordinateur, pour tester** : la connexion Google ne fonctionne pas en ouvrant `index.html` directement. Lancer un serveur local dans le dossier (`python -m http.server`, ou l'extension Live Server de VS Code), puis ouvrir `http://localhost:8000`.
 
 ## Avancement
 
@@ -25,7 +28,7 @@ Elle fonctionne sur ordinateur et sur smartphone. Les données restent sur l'app
 | 8 | Sauvegarde : exporter / importer | À faire |
 | 9 | Installation sur smartphone, mode hors ligne, mise en ligne | À faire |
 
-Plus tard : stockage dans Google Drive (Google Sheets), bouton Planning.
+Plus tard : bouton Planning.
 
 ## Organisation du code
 
@@ -35,7 +38,9 @@ css/styles.css        styles, thèmes clair et sombre
 js/ui.js              icônes, messages, plaque d'immatriculation
 js/theme.js           bascule clair / sombre
 js/routeur.js         navigation entre les écrans
-js/stockage.js        enregistrement des données dans le navigateur (IndexedDB)
+js/firebase-config.js identifiants publics du projet Firebase
+js/compte.js          connexion et déconnexion avec Google
+js/stockage.js        enregistrement en ligne : Cloud Firestore (fiches) et Firebase Storage (fichiers)
 js/voitures.js        règles sur les voitures (format de plaque, vérifications)
 js/categories.js      règles sur les catégories d'entretien
 js/evenements.js      règles sur les événements (vérifications, total des coûts, tri)
@@ -48,4 +53,14 @@ js/ecrans/*.js        un fichier par écran
 js/app.js             démarrage
 ```
 
-Aucun outil à installer : HTML, CSS et JavaScript simples, sans compilation.
+Aucun outil à installer : HTML, CSS et JavaScript simples, sans compilation. Firebase est chargé depuis le site de Google.
+
+## Configuration Firebase
+
+Projet Firebase : `entretien-voiture-67366`. Ses identifiants publics sont dans `js/firebase-config.js` (ils ne sont pas secrets : la protection repose sur la connexion et sur les règles ci-dessous).
+
+1. **Authentication** : fournisseur Google activé ; domaine `leomazet0809-a11y.github.io` dans *Paramètres → Domaines autorisés*.
+2. **Firestore Database** : coller le contenu de [`firestore.rules`](firestore.rules) dans l'onglet *Règles*, puis *Publier*.
+3. **Storage** (documents joints) : demande le forfait **Blaze** (paiement à l'usage ; pour quelques centaines de factures, quelques centimes par mois au plus). Créer le stockage dans *Storage → Commencer*, puis coller [`storage.rules`](storage.rules) dans l'onglet *Règles* et *Publier*. Penser à une alerte de budget dans Google Cloud (*Facturation → Budgets et alertes*).
+
+Chaque compte ne peut lire et modifier que son propre espace (`users/{uid}/…`), et seuls les PDF et images de 25 Mo au plus sont acceptés dans Storage.
