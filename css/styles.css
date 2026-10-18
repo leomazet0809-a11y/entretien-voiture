@@ -721,6 +721,12 @@ body:has(.fenetre[open]) { overflow: hidden; }
 
 .fenetre-large { width: min(760px, 100% - 32px); }
 
+/* Formulaire d'événement : large, pour qu'un entretien tienne sur une ligne (catégorie, détail, coût) */
+.fenetre-evenement {
+  width: min(1080px, 100% - 32px);
+  max-height: min(92dvh, 960px);
+}
+
 .fenetre[open] { animation: fenetre-entree 0.18s ease-out; }
 
 .fenetre::backdrop { background: var(--voile); }
@@ -898,16 +904,33 @@ body:has(.fenetre[open]) { overflow: hidden; }
 
 .lignes-entretien {
   display: grid;
-  gap: 12px;
+  gap: 8px;
 }
 
 .ligne-entretien {
   display: grid;
-  gap: 14px;
-  padding: 12px 16px 16px;
+  gap: 4px;
+  padding: 6px 12px 12px;
   border: 1px solid var(--bordure);
   border-radius: var(--rayon-moyen);
   background: var(--fond);
+}
+
+/* Catégorie, Détail et Coût côte à côte ; le coût n'apparaît qu'en « coût par entretien » */
+.ligne-entretien-champs {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: start;
+}
+
+.ligne-entretien .champ-cout-ligne { width: 150px; }
+
+/* Le détail commence sur une ligne et s'agrandit avec le texte */
+.ligne-entretien .champ-detail textarea {
+  min-height: 48px;
+  max-height: 260px;
+  resize: none;
 }
 
 .ligne-entretien .champ input,
@@ -918,8 +941,13 @@ body:has(.fenetre[open]) { overflow: hidden; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  min-height: 40px;
-  margin-right: -8px;
+  min-height: 32px;
+  margin-right: -6px;
+}
+
+.ligne-entretien-entete .bouton-icone {
+  width: 36px;
+  height: 36px;
 }
 
 .ligne-entretien-titre {
@@ -1094,7 +1122,7 @@ body:has(.fenetre[open]) { overflow: hidden; }
 }
 
 /* Le tableur s'allonge avec la page : c'est la page entière qui défile, avec une seule barre de défilement.
-   Sur un écran étroit, la zone défile aussi de gauche à droite ; la colonne Date reste alors visible. */
+   Sur un écran étroit, la zone défile aussi de gauche à droite, toutes colonnes comprises. */
 .tableur-zone {
   overflow-x: auto;
   border: 1px solid var(--bordure);
@@ -1134,16 +1162,16 @@ body:has(.fenetre[open]) { overflow: hidden; }
 }
 
 .tableur .col-date {
-  position: sticky;
-  left: 0;
-  z-index: 1;
   width: 1%;
   min-width: 124px;
   white-space: nowrap;
   border-right: 1px solid var(--bordure);
 }
 
-.tableur th.col-date { z-index: 3; }
+/* Les entretiens d'un même événement sont serrés les uns sous les autres : l'espace sépare les événements */
+.tableur tbody.groupe tr:not(:first-child) td { padding-top: 2px; }
+
+.tableur tbody.groupe tr:not(:last-child) td { padding-bottom: 2px; }
 
 .tableur tbody.groupe + tbody.groupe tr:first-child td { border-top: 1px solid var(--bordure); }
 
@@ -1710,6 +1738,18 @@ body:has(.fenetre[open]) { overflow: hidden; }
   .ligne-reglage { padding: 18px; }
 }
 
+/* Fenêtre d'événement étroite : Catégorie et Coût sur une ligne, le Détail en dessous */
+@media (max-width: 759px) {
+  .ligne-entretien-champs { grid-template-columns: minmax(0, 1fr) auto; }
+
+  .ligne-entretien .champ-detail {
+    grid-column: 1 / -1;
+    order: 1;
+  }
+
+  .ligne-entretien .champ-cout-ligne { width: 120px; }
+}
+
 @media (max-width: 559px) {
   /* Les fenêtres deviennent des panneaux qui montent du bas de l'écran */
   .fenetre {
@@ -1747,7 +1787,7 @@ body:has(.fenetre[open]) { overflow: hidden; }
     margin-right: 0;
   }
 
-  .ligne-entretien { padding: 10px 14px 14px; }
+  .ligne-entretien { padding: 6px 12px 12px; }
 
   .entete-voiture-identite { column-gap: 14px; }
 

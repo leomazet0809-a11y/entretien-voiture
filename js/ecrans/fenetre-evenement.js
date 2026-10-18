@@ -21,21 +21,21 @@
           <h3 class="ligne-entretien-titre">Entretien</h3>
           <button type="button" class="bouton bouton-icone" data-retirer-ligne>${ui.icone('fermer', 18)}</button>
         </div>
-        <div class="champs-ligne">
+        <div class="ligne-entretien-champs">
           <div class="champ">
             <label for="${id('categorie')}">Catégorie</label>
             <select id="${id('categorie')}" name="${id('categorie')}" aria-describedby="${id('categorie')}-erreur">${optionsCategories(listeCategories, ligne.categorieId)}</select>
             <p class="champ-erreur" id="${id('categorie')}-erreur" hidden></p>
           </div>
+          <div class="champ champ-detail">
+            <label for="${id('detail')}">Détail</label>
+            <textarea id="${id('detail')}" name="${id('detail')}" rows="1" placeholder="Ex. : vidange, filtre à huile, filtre à air">${ui.echapper(evenements.texteDetail(ligne))}</textarea>
+          </div>
           <div class="champ champ-cout-ligne">
-            <label for="${id('cout')}">Coût TTC <span class="facultatif">(facultatif)</span></label>
+            <label for="${id('cout')}">Coût TTC</label>
             <input id="${id('cout')}" name="${id('cout')}" value="${format.montantSaisie(ligne.cout)}" data-saisie-montant inputmode="decimal" autocomplete="off" placeholder="Ex. : 270,00" aria-describedby="${id('cout')}-erreur">
             <p class="champ-erreur" id="${id('cout')}-erreur" hidden></p>
           </div>
-        </div>
-        <div class="champ">
-          <label for="${id('detail')}">Détail</label>
-          <textarea id="${id('detail')}" name="${id('detail')}" rows="3" placeholder="Ex. : vidange, filtre à huile, filtre à air">${ui.echapper(evenements.texteDetail(ligne))}</textarea>
         </div>
       </div>`;
   }
@@ -108,9 +108,18 @@
       formulaire.querySelector('[data-ajouter-ligne]').focus();
     });
 
+    // Le détail s'agrandit avec son texte (la bordure n'est pas comptée dans scrollHeight).
+    function ajusterHauteur(zone) {
+      zone.style.height = 'auto';
+      zone.style.height = `${zone.scrollHeight + 2}px`;
+    }
+
     conteneurLignes.addEventListener('input', (e) => {
+      if (e.target.matches('textarea')) ajusterHauteur(e.target);
       if (e.target.closest('.champ-cout-ligne')) majTotal();
     });
+    // Une fois la fenêtre affichée, les détails déjà écrits prennent leur hauteur.
+    requestAnimationFrame(() => conteneurLignes.querySelectorAll('textarea').forEach(ajusterHauteur));
 
     formulaire.querySelectorAll('[data-choix-cout]').forEach((bouton) => {
       bouton.addEventListener('click', () => definirMode(bouton.dataset.choixCout));
@@ -236,16 +245,15 @@
     let resultat = null;
 
     const contenu = `
-      <div class="champ">
-        <label for="ev-voiture">Voiture</label>
-        <select id="ev-voiture" name="voitureId" aria-describedby="ev-voiture-erreur"${voitureChoisie ? '' : ' autofocus'}>
-          <option value="">Choisir une voiture</option>
-          ${listeVoitures.map((v) => `<option value="${v.id}"${v.id === voitureChoisie ? ' selected' : ''}>${ui.echapper(v.plaque)} · ${ui.echapper(voitures.nom(v))}</option>`).join('')}
-        </select>
-        <p class="champ-erreur" id="ev-voiture-erreur" hidden></p>
-      </div>
-
       <div class="champs-ligne">
+        <div class="champ">
+          <label for="ev-voiture">Voiture</label>
+          <select id="ev-voiture" name="voitureId" aria-describedby="ev-voiture-erreur"${voitureChoisie ? '' : ' autofocus'}>
+            <option value="">Choisir une voiture</option>
+            ${listeVoitures.map((v) => `<option value="${v.id}"${v.id === voitureChoisie ? ' selected' : ''}>${ui.echapper(v.plaque)} · ${ui.echapper(voitures.nom(v))}</option>`).join('')}
+          </select>
+          <p class="champ-erreur" id="ev-voiture-erreur" hidden></p>
+        </div>
         ${ui.champDate({
           id: 'ev-date', nom: 'date', libelle: 'Date', valeur: valeurs.date, aide: 'Laissez vide si elle est inconnue.',
           attributs: voitureChoisie && !evenement ? 'autofocus' : ''
@@ -307,7 +315,7 @@
     await ui.fenetre({
       titre: evenement ? "Modifier l'événement" : "Nouvel événement d'entretien",
       contenu,
-      large: true,
+      classe: 'fenetre-evenement',
       libelleValider: evenement ? 'Enregistrer' : "Ajouter l'événement",
       preparer: (formulaire) => {
         formulaire.dataset.modeCoutInitial = valeurs.modeCout;

@@ -66,14 +66,15 @@
   // Fenêtre par-dessus la page, pour un formulaire ou une confirmation.
   // `preparer(formulaire)` est appelé à l'ouverture ; `valider(formulaire)` renvoie true pour fermer.
   // `supprimer()`, s'il est fourni, ajoute un bouton Supprimer ; il renvoie true pour fermer la fenêtre.
+  // `classe` ajoute une classe CSS à la fenêtre (largeur propre à un formulaire).
   // `annuler: false` retire le bouton Annuler (fenêtre de consultation avec un seul bouton « Fermer »).
   // Renvoie une promesse : true si l'utilisateur a validé, false s'il a annulé.
   let compteurFenetres = 0;
-  function fenetre({ titre, contenu, libelleValider = 'Enregistrer', danger = false, large = false, annuler = true, preparer, valider = () => true, supprimer }) {
+  function fenetre({ titre, contenu, libelleValider = 'Enregistrer', danger = false, large = false, classe = '', annuler = true, preparer, valider = () => true, supprimer }) {
     return new Promise((resoudre) => {
       const idTitre = `fenetre-titre-${++compteurFenetres}`;
       const boite = document.createElement('dialog');
-      boite.className = large ? 'fenetre fenetre-large' : 'fenetre';
+      boite.className = ['fenetre', large && 'fenetre-large', classe].filter(Boolean).join(' ');
       boite.setAttribute('aria-labelledby', idTitre);
       boite.innerHTML = `
         <form class="fenetre-forme" novalidate>
