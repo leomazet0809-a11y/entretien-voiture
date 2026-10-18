@@ -148,6 +148,9 @@ a { color: inherit; }
 
 .icone { display: block; flex: none; }
 
+/* Un élément masqué l'est toujours, même s'il a sa propre mise en page */
+[hidden] { display: none !important; }
+
 /* ---------- Barre du haut ---------- */
 
 .barre {
@@ -591,6 +594,8 @@ body:has(.fenetre[open]) { overflow: hidden; }
   box-shadow: var(--ombre-forte);
 }
 
+.fenetre-large { width: min(760px, 100% - 32px); }
+
 .fenetre[open] { animation: fenetre-entree 0.18s ease-out; }
 
 .fenetre::backdrop { background: var(--voile); }
@@ -641,6 +646,8 @@ body:has(.fenetre[open]) { overflow: hidden; }
   border-top: 1px solid var(--bordure);
 }
 
+.fenetre-supprimer { margin-right: auto; }
+
 /* ---------- Champs de formulaire ---------- */
 
 .champ {
@@ -659,7 +666,9 @@ body:has(.fenetre[open]) { overflow: hidden; }
   color: var(--texte-2);
 }
 
-.champ input {
+.champ input,
+.champ select,
+.champ textarea {
   width: 100%;
   height: 48px;
   padding: 0 14px;
@@ -672,13 +681,38 @@ body:has(.fenetre[open]) { overflow: hidden; }
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.champ input:focus {
+/* Liste déroulante : flèche dessinée avec les couleurs du thème */
+.champ select {
+  padding-right: 40px;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--texte-2) 50%),
+    linear-gradient(135deg, var(--texte-2) 50%, transparent 50%);
+  background-position: calc(100% - 21px) 52%, calc(100% - 16px) 52%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.champ textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 12px 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.champ input[type="date"] { min-width: 0; }
+
+.champ input:focus,
+.champ select:focus,
+.champ textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--accent-anneau);
 }
 
-.champ input[aria-invalid="true"] { border-color: var(--danger); }
+.champ [aria-invalid="true"] { border-color: var(--danger); }
 
 .champ .saisie-plaque {
   font-family: var(--police-mono);
@@ -706,6 +740,216 @@ body:has(.fenetre[open]) { overflow: hidden; }
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
   gap: 18px 16px;
+}
+
+/* Groupes de champs dans le formulaire d'événement */
+.bloc {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bloc legend {
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.lignes-entretien {
+  display: grid;
+  gap: 12px;
+}
+
+.ligne-entretien {
+  display: grid;
+  gap: 14px;
+  padding: 12px 16px 16px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-moyen);
+  background: var(--fond);
+}
+
+.ligne-entretien .champ input,
+.ligne-entretien .champ select,
+.ligne-entretien .champ textarea { background-color: var(--surface); }
+
+.ligne-entretien-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  margin-right: -8px;
+}
+
+.ligne-entretien-titre {
+  margin: 0;
+  color: var(--texte-2);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bouton-ajout-ligne { justify-self: start; }
+
+.cout-total {
+  margin: 0;
+  font-family: var(--police-mono);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Tableur des entretiens ---------- */
+
+.tableur-entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 8px 0 12px;
+}
+
+.tableur-entete h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.tableur-resume {
+  margin: 0;
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+
+/* Zone qui défile dans les deux sens ; l'en-tête et la colonne Date restent visibles */
+.tableur-zone {
+  max-height: max(360px, calc(100dvh - 220px));
+  overflow: auto;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+.tableur {
+  width: 100%;
+  min-width: 980px;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9375rem;
+}
+
+.tableur th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--bordure);
+  background: var(--surface-2);
+  color: var(--texte-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tableur td {
+  padding: 10px 12px;
+  background: var(--surface);
+  vertical-align: top;
+}
+
+.tableur .col-date {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  min-width: 124px;
+  border-right: 1px solid var(--bordure);
+}
+
+.tableur th.col-date { z-index: 3; }
+
+.tableur tbody.groupe + tbody.groupe tr:first-child td { border-top: 1px solid var(--bordure); }
+
+.tableur tbody.groupe { cursor: pointer; }
+
+.tableur tbody.groupe:hover td { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+
+.tableur .col-km,
+.tableur .col-cout {
+  font-family: var(--police-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tableur .col-cout { text-align: right; }
+
+.tableur .col-garage {
+  min-width: 120px;
+  font-weight: 500;
+}
+
+.tableur .col-texte {
+  min-width: 200px;
+  max-width: 340px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.etiquette-categorie {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--accent-doux);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ouvrir-evenement {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--texte);
+  font-family: var(--police-mono);
+  font-size: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inconnu {
+  color: var(--texte-2);
+  font-family: var(--police);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.ligne-total td { padding-top: 2px; }
+
+.total-libelle {
+  color: var(--texte-2);
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+.ligne-total .col-cout { font-weight: 650; }
+
+.groupe-signale td { animation: signale 2.4s ease-out; }
+
+@keyframes signale {
+  0%, 40% { background-color: var(--accent-doux); }
 }
 
 /* ---------- Paramètres ---------- */
@@ -942,7 +1186,18 @@ body:has(.fenetre[open]) { overflow: hidden; }
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
+  .fenetre-pied { flex-wrap: wrap; }
+
   .fenetre-pied .bouton { flex: 1; }
+
+  /* Sur téléphone, « Supprimer » passe seul sur une ligne, sous les autres boutons */
+  .fenetre-pied .fenetre-supprimer {
+    flex-basis: 100%;
+    order: 3;
+    margin-right: 0;
+  }
+
+  .ligne-entretien { padding: 10px 14px 14px; }
 
   .entete-voiture-actions { width: 100%; }
 

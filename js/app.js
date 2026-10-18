@@ -35,7 +35,9 @@
 
     document.getElementById('bouton-theme').addEventListener('click', theme.basculer);
     document.getElementById('bouton-ajouter').addEventListener('click', () => {
-      ui.toast("L'ajout d'un entretien arrive à l'étape 4.");
+      // Sur la fiche d'une voiture, le nouvel événement lui est rattaché d'office.
+      const [ecran, id] = location.hash.replace(/^#/, '').split('/');
+      EV.fenetreEvenement.nouveau(ecran === 'voiture' && id ? decodeURIComponent(id) : null);
     });
     document.getElementById('bouton-km').addEventListener('click', () => {
       ui.toast("Le relevé du kilométrage arrive à l'étape 6.");

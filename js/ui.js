@@ -59,13 +59,14 @@
 
   // Fenêtre par-dessus la page, pour un formulaire ou une confirmation.
   // `preparer(formulaire)` est appelé à l'ouverture ; `valider(formulaire)` renvoie true pour fermer.
+  // `supprimer()`, s'il est fourni, ajoute un bouton Supprimer ; il renvoie true pour fermer la fenêtre.
   // Renvoie une promesse : true si l'utilisateur a validé, false s'il a annulé.
   let compteurFenetres = 0;
-  function fenetre({ titre, contenu, libelleValider = 'Enregistrer', danger = false, preparer, valider = () => true }) {
+  function fenetre({ titre, contenu, libelleValider = 'Enregistrer', danger = false, large = false, preparer, valider = () => true, supprimer }) {
     return new Promise((resoudre) => {
       const idTitre = `fenetre-titre-${++compteurFenetres}`;
       const boite = document.createElement('dialog');
-      boite.className = 'fenetre';
+      boite.className = large ? 'fenetre fenetre-large' : 'fenetre';
       boite.setAttribute('aria-labelledby', idTitre);
       boite.innerHTML = `
         <form class="fenetre-forme" novalidate>
@@ -75,6 +76,7 @@
           </div>
           <div class="fenetre-corps">${contenu}</div>
           <div class="fenetre-pied">
+            ${supprimer ? `<button type="button" class="bouton bouton-texte-danger fenetre-supprimer" data-supprimer-fenetre>${icone('corbeille', 18)}<span>Supprimer</span></button>` : ''}
             <button type="button" class="bouton bouton-secondaire" data-fermer>Annuler</button>
             <button type="submit" class="bouton ${danger ? 'bouton-danger' : 'bouton-principal'}">${echapper(libelleValider)}</button>
           </div>
@@ -85,6 +87,11 @@
       let validee = false;
 
       boite.querySelectorAll('[data-fermer]').forEach((b) => b.addEventListener('click', () => boite.close()));
+      if (supprimer) {
+        boite.querySelector('[data-supprimer-fenetre]').addEventListener('click', async () => {
+          if (await supprimer()) boite.close();
+        });
+      }
       formulaire.addEventListener('submit', async (e) => {
         e.preventDefault();
         boutonValider.disabled = true;
@@ -131,7 +138,7 @@
   // Renvoie true s'il n'y a aucune erreur.
   function afficherErreurs(formulaire, erreurs) {
     let premier = null;
-    formulaire.querySelectorAll('input[name]').forEach((saisie) => {
+    formulaire.querySelectorAll('input[name], select[name], textarea[name]').forEach((saisie) => {
       const message = erreurs[saisie.name];
       const zone = formulaire.querySelector(`#${saisie.id}-erreur`);
       saisie.setAttribute('aria-invalid', message ? 'true' : 'false');

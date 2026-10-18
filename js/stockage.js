@@ -4,9 +4,10 @@
   'use strict';
 
   const NOM_BASE = 'entretien-voiture';
-  const VERSION = 2;
-  const TABLES = ['voitures', 'categories', 'entretiens', 'documents', 'releves'];
-  const TABLES_PAR_VOITURE = ['entretiens', 'documents', 'releves'];
+  const VERSION = 3;
+  // Un événement (un passage : date, km, garage, documents) contient ses lignes d'entretien.
+  const TABLES = ['voitures', 'categories', 'evenements', 'documents', 'releves'];
+  const TABLES_PAR_VOITURE = ['evenements', 'documents', 'releves'];
 
   // Catégories créées une seule fois, à la première ouverture ; l'utilisateur les modifie ensuite à sa guise.
   const CATEGORIES_DE_DEPART = ['Révision / vidange', 'Contrôle technique', 'Freinage', 'Pneumatiques',
@@ -59,6 +60,14 @@
         if (evenement.oldVersion < 2) {
           const categories = requete.transaction.objectStore('categories');
           categoriesDeDepart().forEach((categorie) => categories.put(categorie));
+        }
+        if (evenement.oldVersion < 3) {
+          // Les entretiens deviennent des lignes à l'intérieur d'un événement ; la table « entretiens » n'a jamais servi.
+          db.createObjectStore('evenements', { keyPath: 'id' }).createIndex('voitureId', 'voitureId');
+          if (db.objectStoreNames.contains('entretiens')) db.deleteObjectStore('entretiens');
+          const documents = requete.transaction.objectStore('documents');
+          if (documents.indexNames.contains('entretienId')) documents.deleteIndex('entretienId');
+          documents.createIndex('evenementId', 'evenementId');
         }
       };
       requete.onblocked = () => {
@@ -156,5 +165,26 @@
     await finTransaction(transaction);
   }
 
-  EV.stockage = { demarrer, tous, lire, parVoiture, enregistrer, supprimer, supprimerVoiture };
+  // Supprime un événement et ses documents joints, en une seule opération.
+  async function supprimerEvenement(id) {
+    if (memoire) {
+      memoire.evenements.delete(id);
+      memoire.documents.forEach((document, cle) => {
+        if (document.evenementId === id) memoire.documents.delete(cle);
+      });
+      return;
+    }
+    const transaction = base.transaction(['evenements', 'documents'], 'readwrite');
+    transaction.objectStore('evenements').delete(id);
+    const documents = transaction.objectStore('documents');
+    const curseur = documents.index('evenementId').openKeyCursor(IDBKeyRange.only(id));
+    curseur.onsuccess = () => {
+      if (!curseur.result) return;
+      documents.delete(curseur.result.primaryKey);
+      curseur.result.continue();
+    };
+    await finTransaction(transaction);
+  }
+
+  EV.stockage = { demarrer, nouvelId, tous, lire, parVoiture, enregistrer, supprimer, supprimerVoiture, supprimerEvenement };
 })(window.EV = window.EV || {});

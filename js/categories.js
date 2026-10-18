@@ -28,11 +28,13 @@
     return { nom: propre };
   }
 
-  // Nombre d'entretiens rattachés à chaque catégorie : { idCategorie: nombre }.
+  // Nombre d'entretiens (lignes des événements) rattachés à chaque catégorie : { idCategorie: nombre }.
   async function utilisations() {
     const compte = {};
-    (await stockage.tous('entretiens')).forEach((entretien) => {
-      if (entretien.categorieId) compte[entretien.categorieId] = (compte[entretien.categorieId] || 0) + 1;
+    (await stockage.tous('evenements')).forEach((evenement) => {
+      evenement.lignes.forEach((ligne) => {
+        if (ligne.categorieId) compte[ligne.categorieId] = (compte[ligne.categorieId] || 0) + 1;
+      });
     });
     return compte;
   }

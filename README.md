@@ -1,6 +1,8 @@
 # Entretien voiture
 
-Application web pour suivre l'entretien de ses voitures : un dossier par voiture, le tableau des entretiens (date, kilométrage, coût, commentaires, factures), l'historique du kilométrage et une recherche dans toutes les données.
+Application web pour suivre l'entretien de ses voitures : un dossier par voiture, le tableau des entretiens, l'historique du kilométrage et une recherche dans toutes les données.
+
+Un **événement** est un passage (au garage ou chez soi) : une date, un kilométrage, un garage, des documents, et un ou plusieurs **entretiens** (catégorie, détail, commentaire). Le coût se saisit globalement ou entretien par entretien.
 
 Elle fonctionne sur ordinateur et sur smartphone. Les données restent sur l'appareil, dans le navigateur : rien n'est envoyé sur Internet.
 
@@ -16,7 +18,7 @@ Elle fonctionne sur ordinateur et sur smartphone. Les données restent sur l'app
 | 1 | Barre du haut, thème clair / sombre, adaptation à la taille de l'écran | Fait |
 | 2 | Voitures : créer, modifier, supprimer | Fait |
 | 3 | Paramètres : catégories d'entretien | Fait |
-| 4 | Fiche voiture et tableau des entretiens | À faire |
+| 4 | Événements d'entretien et tableur de la voiture | Fait |
 | 5 | Documents joints (factures, photos) | À faire |
 | 6 | Kilométrage : bouton Km, historique, courbe | À faire |
 | 7 | Recherche dans toutes les données | À faire |
@@ -36,6 +38,8 @@ js/routeur.js         navigation entre les écrans
 js/stockage.js        enregistrement des données dans le navigateur (IndexedDB)
 js/voitures.js        règles sur les voitures (format de plaque, vérifications)
 js/categories.js      règles sur les catégories d'entretien
+js/evenements.js      règles sur les événements (vérifications, total des coûts, tri)
+js/format.js          montants, kilométrages et dates à la française
 js/ecrans/*.js        un fichier par écran
 js/app.js             démarrage
 ```

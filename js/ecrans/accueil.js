@@ -11,7 +11,7 @@
     location.hash = `voiture/${voiture.id}`;
   }
 
-  function carte(voiture) {
+  function carte(voiture, resume = {}) {
     return `
       <a class="carte-voiture" href="#voiture/${encodeURIComponent(voiture.id)}">
         ${ui.plaque(voiture.plaque)}
@@ -20,8 +20,8 @@
           ${voiture.annee ? `<span class="pastille">${voiture.annee}</span>` : ''}
         </div>
         <dl class="carte-voiture-infos">
-          <div><dt>Dernier entretien</dt><dd>—</dd></div>
-          <div><dt>Kilométrage</dt><dd>—</dd></div>
+          <div><dt>Dernier entretien</dt><dd>${resume.derniereDate ? EV.format.date(resume.derniereDate) : '—'}</dd></div>
+          <div><dt>Kilométrage</dt><dd>${resume.kmMax !== null && resume.kmMax !== undefined ? EV.format.km(resume.kmMax) : '—'}</dd></div>
         </dl>
       </a>`;
   }
@@ -49,7 +49,7 @@
   }
 
   EV.routeur.enregistrer('accueil', async (zone) => {
-    const liste = await voitures.liste();
+    const [liste, resumes] = await Promise.all([voitures.liste(), EV.evenements.resumes()]);
 
     if (liste.length === 0) {
       zone.innerHTML = etatVide();
@@ -64,7 +64,7 @@
             ${ui.icone('plus')}<span>Nouvelle voiture</span>
           </button>
         </div>
-        <div class="grille-voitures">${liste.map(carte).join('')}</div>`;
+        <div class="grille-voitures">${liste.map((v) => carte(v, resumes[v.id])).join('')}</div>`;
     }
 
     zone.querySelector('[data-nouvelle-voiture]').addEventListener('click', nouvelleVoiture);
