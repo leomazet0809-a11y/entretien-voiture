@@ -4,7 +4,7 @@
   'use strict';
 
   const NOM_BASE = 'entretien-voiture';
-  const VERSION = 3;
+  const VERSION = 4;
   // Un événement (un passage : date, km, garage, documents) contient ses lignes d'entretien.
   const TABLES = ['voitures', 'categories', 'evenements', 'documents', 'releves'];
   const TABLES_PAR_VOITURE = ['evenements', 'documents', 'releves'];
@@ -35,6 +35,25 @@
     if (crypto.randomUUID) return crypto.randomUUID();
     const octets = crypto.getRandomValues(new Uint8Array(16));
     return Array.from(octets, (o) => o.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Relevé kilométrique tiré d'un événement daté avec un kilométrage ; son identifiant découle de l'événement.
+  function idReleveDeLEvenement(evenementId) {
+    return `evenement-${evenementId}`;
+  }
+
+  function releveDeLEvenement(evenement, maintenant) {
+    if (!evenement.date || evenement.km === null || evenement.km === undefined) return null;
+    return {
+      id: idReleveDeLEvenement(evenement.id),
+      voitureId: evenement.voitureId,
+      evenementId: evenement.id,
+      date: evenement.date,
+      km: evenement.km,
+      source: 'evenement',
+      creeLe: maintenant,
+      modifieLe: maintenant
+    };
   }
 
   function categoriesDeDepart() {
@@ -68,6 +87,18 @@
           const documents = requete.transaction.objectStore('documents');
           if (documents.indexNames.contains('entretienId')) documents.deleteIndex('entretienId');
           documents.createIndex('evenementId', 'evenementId');
+        }
+        if (evenement.oldVersion < 4) {
+          // Les événements déjà saisis donnent leur relevé kilométrique.
+          const maintenant = new Date().toISOString();
+          const releves = requete.transaction.objectStore('releves');
+          const curseur = requete.transaction.objectStore('evenements').openCursor();
+          curseur.onsuccess = () => {
+            if (!curseur.result) return;
+            const releve = releveDeLEvenement(curseur.result.value, maintenant);
+            if (releve) releves.put(releve);
+            curseur.result.continue();
+          };
         }
       };
       requete.onblocked = () => {
@@ -171,7 +202,7 @@
     return attendre(base.transaction('documents').objectStore('documents').index('evenementId').getAll(evenementId));
   }
 
-  // Enregistre un événement et ses changements de documents, en une seule opération.
+  // Enregistre un événement, ses changements de documents et son relevé kilométrique, en une seule opération.
   // `ajouts` : documents à joindre ({ nom, type, taille, contenu }) ; `suppressions` : identifiants à retirer.
   async function enregistrerEvenement(evenement, { ajouts = [], suppressions = [] } = {}) {
     const maintenant = new Date().toISOString();
@@ -188,6 +219,8 @@
       modifieLe: maintenant
     }));
 
+    const releve = releveDeLEvenement(complet, maintenant);
+
     if (memoire) {
       memoire.evenements.set(complet.id, structuredClone(complet));
       suppressions.forEach((id) => memoire.documents.delete(id));
@@ -195,11 +228,16 @@
         if (document.evenementId === complet.id) document.voitureId = complet.voitureId;
       });
       nouveaux.forEach((document) => memoire.documents.set(document.id, document));
+      if (releve) memoire.releves.set(releve.id, releve);
+      else memoire.releves.delete(idReleveDeLEvenement(complet.id));
       return complet;
     }
 
-    const transaction = base.transaction(['evenements', 'documents'], 'readwrite');
+    const transaction = base.transaction(['evenements', 'documents', 'releves'], 'readwrite');
     transaction.objectStore('evenements').put(complet);
+    // Le relevé suit l'événement : créé, mis à jour, ou retiré si la date ou le kilométrage manque.
+    if (releve) transaction.objectStore('releves').put(releve);
+    else transaction.objectStore('releves').delete(idReleveDeLEvenement(complet.id));
     const documents = transaction.objectStore('documents');
     suppressions.forEach((id) => documents.delete(id));
     // Si l'événement change de voiture, ses documents le suivent.
@@ -214,17 +252,19 @@
     return complet;
   }
 
-  // Supprime un événement et ses documents joints, en une seule opération.
+  // Supprime un événement, ses documents joints et son relevé kilométrique, en une seule opération.
   async function supprimerEvenement(id) {
     if (memoire) {
       memoire.evenements.delete(id);
+      memoire.releves.delete(idReleveDeLEvenement(id));
       memoire.documents.forEach((document, cle) => {
         if (document.evenementId === id) memoire.documents.delete(cle);
       });
       return;
     }
-    const transaction = base.transaction(['evenements', 'documents'], 'readwrite');
+    const transaction = base.transaction(['evenements', 'documents', 'releves'], 'readwrite');
     transaction.objectStore('evenements').delete(id);
+    transaction.objectStore('releves').delete(idReleveDeLEvenement(id));
     const documents = transaction.objectStore('documents');
     const curseur = documents.index('evenementId').openKeyCursor(IDBKeyRange.only(id));
     curseur.onsuccess = () => {

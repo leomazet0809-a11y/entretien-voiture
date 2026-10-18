@@ -3,6 +3,7 @@
   'use strict';
 
   const { ui, format, voitures, categories, evenements } = EV;
+  const NOMBRE = new Intl.NumberFormat('fr-FR');
 
   function introuvable() {
     return `
@@ -117,18 +118,131 @@
       </section>`;
   }
 
+  // ---------- Onglet Kilométrage ----------
+
+  function aucunReleve() {
+    return `
+      <section class="vide vide-compact">
+        <h2>Aucun relevé pour l'instant</h2>
+        <p>Notez le kilométrage du compteur avec le bouton Km. Les entretiens qui ont une date et un kilométrage s'ajoutent aussi ici automatiquement.</p>
+        <button class="bouton bouton-principal" type="button" data-noter-km>
+          ${ui.icone('compteur')}<span>Noter le kilométrage</span>
+        </button>
+      </section>`;
+  }
+
+  function tuiles(historique) {
+    const { dernier, premier, moyenneAnnuelle } = EV.kilometrage.statistiques(historique);
+    const issusEntretiens = historique.filter((r) => r.source === 'evenement').length;
+    return `
+      <div class="tuiles">
+        <div class="tuile">
+          <p class="tuile-libelle">Kilométrage actuel</p>
+          <p class="tuile-valeur">${format.km(dernier.km)}</p>
+          <p class="tuile-note">le ${format.date(dernier.date)}</p>
+        </div>
+        <div class="tuile">
+          <p class="tuile-libelle">Moyenne par an</p>
+          <p class="tuile-valeur">${moyenneAnnuelle ? `≈ ${format.km(moyenneAnnuelle)}` : '—'}</p>
+          <p class="tuile-note">${moyenneAnnuelle ? `depuis le ${format.date(premier.date)}` : 'il faut des relevés sur au moins deux mois'}</p>
+        </div>
+        <div class="tuile">
+          <p class="tuile-libelle">Relevés</p>
+          <p class="tuile-valeur">${historique.length}</p>
+          <p class="tuile-note">dont ${issusEntretiens} issu${issusEntretiens > 1 ? 's' : ''} des entretiens</p>
+        </div>
+      </div>`;
+  }
+
+  // Historique du plus récent au plus ancien ; l'écart se lit par rapport au relevé précédent (plus ancien).
+  function tableauReleves(historique, evenementsParId) {
+    const lignes = historique.map((releve, rang) => {
+      const precedent = historique[rang + 1];
+      let ecart = '';
+      if (precedent) {
+        const difference = releve.km - precedent.km;
+        const duree = EV.kilometrage.jours(releve.date) - EV.kilometrage.jours(precedent.date);
+        ecart = difference < 0
+          ? `<span class="ecart-incoherent">${ui.icone('alerte', 16)}<span>${NOMBRE.format(difference)} km · à vérifier</span></span>`
+          : `+${format.km(difference)} <span class="ecart-duree">${duree === 0 ? 'le même jour' : `en ${format.pluriel(duree, 'jour')}`}</span>`;
+      }
+      const evenement = evenementsParId[releve.evenementId];
+      const origine = releve.source === 'evenement'
+        ? `Entretien${evenement?.garage ? ` · ${ui.echapper(evenement.garage)}` : ''}`
+        : 'Relevé';
+      return `
+        <tr data-releve="${releve.id}">
+          <td class="col-date"><button type="button" class="ouvrir-evenement" aria-label="${releve.source === 'evenement' ? "Ouvrir l'événement" : 'Modifier le relevé'} du ${format.date(releve.date)}">${format.date(releve.date)}</button></td>
+          <td class="col-km">${format.km(releve.km)}</td>
+          <td class="col-ecart">${ecart}</td>
+          <td class="col-origine"><span class="origine origine-${releve.source}">${origine}</span></td>
+        </tr>`;
+    }).join('');
+    return `
+      <div class="tableur-zone tableur-zone-courte" role="region" aria-labelledby="titre-historique" tabindex="0">
+        <table class="tableur tableau-releves">
+          <thead>
+            <tr>
+              <th class="col-date" scope="col">Date</th>
+              <th class="col-km" scope="col">Kilométrage</th>
+              <th scope="col">Écart</th>
+              <th scope="col">Origine</th>
+            </tr>
+          </thead>
+          <tbody>${lignes}</tbody>
+        </table>
+      </div>`;
+  }
+
+  async function ongletKilometrage(zone, voiture, liste) {
+    const historique = await EV.kilometrage.historique(voiture.id);
+    const contenu = zone.querySelector('[data-onglet-contenu]');
+    if (historique.length === 0) {
+      contenu.innerHTML = aucunReleve();
+      contenu.querySelector('[data-noter-km]').addEventListener('click', () => EV.fenetreReleve.nouveau(voiture.id));
+      return;
+    }
+    const evenementsParId = Object.fromEntries(liste.map((ev) => [ev.id, ev]));
+    contenu.innerHTML = `
+      ${tuiles(historique)}
+      <section class="carte-graphique" aria-labelledby="titre-courbe">
+        <h2 id="titre-courbe">Évolution du kilométrage</h2>
+        <div class="graphique" data-graphique></div>
+        ${historique.length === 1 ? '<p class="champ-aide">La courbe se dessine à partir de deux relevés.</p>' : ''}
+      </section>
+      <div class="tableur-entete">
+        <h2 id="titre-historique">Historique des relevés</h2>
+        <p class="tableur-resume">Cliquez sur un relevé pour le modifier.</p>
+      </div>
+      ${tableauReleves(historique, evenementsParId)}`;
+
+    const points = [...historique].reverse().map((r) => ({ date: r.date, km: r.km, origine: r.source === 'evenement' ? 'Entretien' : 'Relevé' }));
+    EV.graphique.courbeKm(contenu.querySelector('[data-graphique]'), points);
+
+    contenu.querySelectorAll('tr[data-releve]').forEach((ligne) => {
+      const releve = historique.find((r) => r.id === ligne.dataset.releve);
+      ligne.addEventListener('click', () => {
+        if (releve.source === 'evenement' && evenementsParId[releve.evenementId]) EV.fenetreEvenement.modifier(evenementsParId[releve.evenementId]);
+        else EV.fenetreReleve.modifier(releve);
+      });
+    });
+  }
+
   // ---------- Écran ----------
 
-  EV.routeur.enregistrer('voiture', async (zone, [id]) => {
+  EV.routeur.enregistrer('voiture', async (zone, [id, onglet]) => {
     const voiture = id ? await voitures.lire(decodeURIComponent(id)) : undefined;
     if (!voiture) {
       zone.innerHTML = introuvable();
       return;
     }
-    const [liste, listeCategories, documents] = await Promise.all([
-      evenements.parVoiture(voiture.id), categories.liste(), evenements.documentsParEvenement(voiture.id)
+    const [liste, listeCategories, documents, nombreReleves] = await Promise.all([
+      evenements.parVoiture(voiture.id), categories.liste(), evenements.documentsParEvenement(voiture.id),
+      EV.kilometrage.historique(voiture.id).then((h) => h.length)
     ]);
     const nomsCategories = Object.fromEntries(listeCategories.map((c) => [c.id, c.nom]));
+    const ongletKm = onglet === 'km';
+    const adresse = `#voiture/${encodeURIComponent(voiture.id)}`;
 
     zone.innerHTML = `
       <a class="retour" href="#">${ui.icone('retour', 18)}<span>Mes voitures</span></a>
@@ -151,10 +265,21 @@
         </div>
       </div>
 
-      ${liste.length ? tableur(liste, nomsCategories, documents) : aucunEntretien()}`;
+      <nav class="onglets" aria-label="Rubriques du dossier">
+        <a class="onglet" href="${adresse}"${ongletKm ? '' : ' aria-current="page"'}>Entretiens <span class="onglet-compte">${liste.length}</span></a>
+        <a class="onglet" href="${adresse}/km"${ongletKm ? ' aria-current="page"' : ''}>Kilométrage <span class="onglet-compte">${nombreReleves}</span></a>
+      </nav>
+
+      <div data-onglet-contenu>
+        ${ongletKm ? '' : (liste.length ? tableur(liste, nomsCategories, documents) : aucunEntretien())}
+      </div>`;
 
     zone.querySelector('[data-modifier]').addEventListener('click', () => modifierVoiture(voiture));
     zone.querySelector('[data-supprimer]').addEventListener('click', () => supprimerVoiture(voiture));
+    if (ongletKm) {
+      await ongletKilometrage(zone, voiture, liste);
+      return;
+    }
     zone.querySelector('[data-ajouter-evenement]')?.addEventListener('click', () => EV.fenetreEvenement.nouveau(voiture.id));
 
     // Un clic n'importe où sur un événement l'ouvre ; au clavier, le bouton de la date fait de même.

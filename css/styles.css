@@ -15,6 +15,7 @@
   --accent-texte: #FFFFFF;
   --accent-doux: #E9EBFF;
   --accent-anneau: rgb(67 83 255 / 0.22);
+  --courbe: #4353FF;
   --danger: #D1342A;
   --danger-survol: #B82A21;
   --danger-texte: #FFFFFF;
@@ -62,6 +63,7 @@
     --accent-texte: #0B0D24;
     --accent-doux: #22254A;
     --accent-anneau: rgb(124 135 255 / 0.3);
+    --courbe: #7480FF;
   --danger: #FF7A6E;
   --danger-survol: #FF938A;
   --danger-texte: #1F0705;
@@ -88,6 +90,7 @@
   --accent-texte: #0B0D24;
   --accent-doux: #22254A;
   --accent-anneau: rgb(124 135 255 / 0.3);
+  --courbe: #7480FF;
   --danger: #FF7A6E;
   --danger-survol: #FF938A;
   --danger-texte: #1F0705;
@@ -1098,6 +1101,226 @@ body:has(.fenetre[open]) { overflow: hidden; }
 
 @keyframes signale {
   0%, 40% { background-color: var(--accent-doux); }
+}
+
+/* ---------- Onglets de la fiche voiture ---------- */
+
+.onglets {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--bordure);
+  overflow-x: auto;
+}
+
+.onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  margin-bottom: -1px;
+  padding: 0 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--texte-2);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.onglet:hover { color: var(--texte); }
+
+.onglet[aria-current="page"] {
+  border-bottom-color: var(--accent);
+  color: var(--texte);
+}
+
+.onglet-compte {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--texte-2);
+  font-size: 0.75rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Kilométrage ---------- */
+
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tuile {
+  padding: 16px 18px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+.tuile p { margin: 0; }
+
+.tuile-libelle {
+  color: var(--texte-2);
+  font-size: 0.875rem;
+}
+
+.tuile-valeur {
+  margin: 2px 0 !important;
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.tuile-note {
+  color: var(--texte-2);
+  font-size: 0.8125rem;
+}
+
+.carte-graphique {
+  margin-bottom: 24px;
+  padding: 18px 18px 10px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+.carte-graphique h2 {
+  margin: 0 0 8px;
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+
+.graphique {
+  position: relative;
+  min-height: 220px;
+}
+
+.graphique-svg {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+  border-radius: 8px;
+}
+
+.graphique-grille { stroke: var(--bordure); stroke-width: 1; }
+
+.graphique-axe,
+.graphique-graduation { stroke: var(--bordure); stroke-width: 1; }
+
+.graphique-texte {
+  fill: var(--texte-2);
+  font-family: var(--police);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.graphique-etiquette {
+  fill: var(--texte);
+  font-weight: 650;
+}
+
+.graphique-ligne {
+  fill: none;
+  stroke: var(--courbe);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.graphique-aire { fill: var(--courbe); opacity: 0.1; }
+
+.graphique-point {
+  fill: var(--courbe);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.graphique-point-actif { r: 6px; }
+
+.graphique-repere { stroke: var(--texte-2); stroke-width: 1; }
+
+.graphique-zone {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.graphique-bulle {
+  position: absolute;
+  display: grid;
+  padding: 8px 12px;
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--ombre-forte);
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+}
+
+.graphique-bulle strong {
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.graphique-bulle span {
+  color: var(--texte-2);
+  font-size: 0.8125rem;
+}
+
+.tableur-zone-courte { max-height: 480px; }
+
+.tableau-releves { min-width: 520px; }
+
+.tableau-releves tbody tr { cursor: pointer; }
+
+.tableau-releves tbody tr + tr td { border-top: 1px solid var(--bordure); }
+
+.tableau-releves tbody tr:hover td { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+
+.tableau-releves .col-ecart {
+  font-family: var(--police-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ecart-duree {
+  color: var(--texte-2);
+  font-family: var(--police);
+  font-size: 0.8125rem;
+}
+
+.ecart-incoherent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.origine {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.origine-evenement { background: var(--accent-doux); }
+
+/* Avertissement non bloquant (kilométrage incohérent) */
+.avertissement {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--avertissement-bord);
+  border-radius: var(--rayon-moyen);
+  background: var(--avertissement-doux);
+  font-size: 0.9375rem;
 }
 
 /* ---------- Paramètres ---------- */

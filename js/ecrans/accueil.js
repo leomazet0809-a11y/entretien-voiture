@@ -49,7 +49,12 @@
   }
 
   EV.routeur.enregistrer('accueil', async (zone) => {
-    const [liste, resumes] = await Promise.all([voitures.liste(), EV.evenements.resumes()]);
+    const [liste, resumes, kmReleves] = await Promise.all([voitures.liste(), EV.evenements.resumes(), EV.kilometrage.maxParVoiture()]);
+    // Le kilométrage le plus élevé connu : relevés (dont ceux des entretiens) et entretiens sans date.
+    liste.forEach((v) => {
+      const resume = resumes[v.id] || (resumes[v.id] = { derniereDate: null, kmMax: null });
+      if (kmReleves[v.id] !== undefined && (resume.kmMax === null || kmReleves[v.id] > resume.kmMax)) resume.kmMax = kmReleves[v.id];
+    });
 
     if (liste.length === 0) {
       zone.innerHTML = etatVide();

@@ -29,18 +29,22 @@
     });
   }
 
+  function voitureAffichee() {
+    const [ecran, id] = location.hash.replace(/^#/, '').split('/');
+    return ecran === 'voiture' && id ? decodeURIComponent(id) : null;
+  }
+
   async function demarrer() {
     ui.remplirIcones();
     theme.appliquer();
 
     document.getElementById('bouton-theme').addEventListener('click', theme.basculer);
+    // Sur la fiche d'une voiture, le nouvel événement ou relevé lui est rattaché d'office.
     document.getElementById('bouton-ajouter').addEventListener('click', () => {
-      // Sur la fiche d'une voiture, le nouvel événement lui est rattaché d'office.
-      const [ecran, id] = location.hash.replace(/^#/, '').split('/');
-      EV.fenetreEvenement.nouveau(ecran === 'voiture' && id ? decodeURIComponent(id) : null);
+      EV.fenetreEvenement.nouveau(voitureAffichee());
     });
     document.getElementById('bouton-km').addEventListener('click', () => {
-      ui.toast("Le relevé du kilométrage arrive à l'étape 6.");
+      EV.fenetreReleve.nouveau(voitureAffichee());
     });
     brancherRecherche();
 

@@ -340,10 +340,12 @@
   }
 
   // Affiche la fiche de la voiture concernée, en signalant l'événement qui vient d'être enregistré.
+  // Si l'on est déjà sur la fiche de cette voiture (n'importe quel onglet), on y reste.
   function montrer(voitureId, evenementId = null) {
     EV.evenementSignale = evenementId;
     const cible = `voiture/${voitureId}`;
-    if (location.hash.replace(/^#/, '') === cible) EV.routeur.afficher();
+    const actuelle = location.hash.replace(/^#/, '');
+    if (actuelle === cible || actuelle.startsWith(`${cible}/`)) EV.routeur.afficher();
     else location.hash = cible;
   }
 
