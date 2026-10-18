@@ -12,6 +12,12 @@ Elle fonctionne sur ordinateur et sur smartphone. On s'y connecte avec un compte
 ## Ouvrir l'application
 
 - **En ligne** : https://leomazet0809-a11y.github.io/entretien-voiture/ (GitHub Pages).
+- **L'installer comme une application** :
+  - sur Android, dans Chrome : menu ⋮ → « Installer l'application » ;
+  - sur iPhone, dans Safari : Partager → « Sur l'écran d'accueil » ;
+  - sur ordinateur : icône d'installation dans la barre d'adresse de Chrome ou Edge.
+
+  La rubrique *Application* des Paramètres propose aussi un bouton Installer quand le navigateur le permet. Une fois ouverte une première fois, l'application s'ouvre aussi sans réseau.
 - **Sur l'ordinateur, pour tester** : la connexion Google ne fonctionne pas en ouvrant `index.html` directement. Lancer un serveur local dans le dossier (`python -m http.server`, ou l'extension Live Server de VS Code), puis ouvrir `http://localhost:8000`.
 
 ## Avancement
@@ -26,7 +32,7 @@ Elle fonctionne sur ordinateur et sur smartphone. On s'y connecte avec un compte
 | 6 | Kilométrage : bouton Km, historique, courbe | Fait |
 | 7 | Recherche dans toutes les données | Fait |
 | 8 | Exporter / importer les entretiens d'une voiture (fichier CSV) | Fait |
-| 9 | Installation sur smartphone, mode hors ligne, mise en ligne | À faire |
+| 9 | Installation comme une application, ouverture sans réseau | Fait |
 
 Plus tard : bouton Planning.
 
@@ -34,9 +40,12 @@ Plus tard : bouton Planning.
 
 ```
 index.html            page unique et barre du haut
+manifest.webmanifest  description de l'application installée (nom, icônes, plein écran)
+sw.js                 service worker : garde l'application sur l'appareil pour l'ouvrir sans réseau
 icones/               icône de l'onglet du navigateur et de l'écran d'accueil du téléphone
 css/styles.css        styles, thèmes clair et sombre
 js/ui.js              icônes, messages, plaque d'immatriculation
+js/installation.js    installation de l'application et ouverture sans réseau
 js/theme.js           bascule clair / sombre
 js/routeur.js         navigation entre les écrans
 js/firebase-config.js identifiants publics du projet Firebase
@@ -57,6 +66,16 @@ js/app.js             démarrage
 ```
 
 Aucun outil à installer : HTML, CSS et JavaScript simples, sans compilation. Firebase est chargé depuis le site de Google.
+
+## Ouverture sans réseau
+
+Le service worker (`sw.js`) garde une copie de l'application sur l'appareil :
+- les fichiers de l'application sont pris sur le réseau quand il répond : une nouvelle version publiée est donc prise au rechargement suivant ;
+- sans réseau, ou si le réseau tarde plus de 4 secondes, c'est la copie de l'appareil qui sert ;
+- les données ont leur propre copie hors ligne (Firestore) : ce qui est saisi sans réseau est envoyé au retour de la connexion ;
+- l'envoi de nouveaux documents, lui, demande une connexion.
+
+Un fichier ajouté à l'application doit aussi être ajouté à la liste `FICHIERS` de `sw.js`.
 
 ## Fichier CSV des entretiens
 

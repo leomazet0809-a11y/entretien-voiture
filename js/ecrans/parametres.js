@@ -1,4 +1,4 @@
-/* Écran Paramètres : compte, apparence, catégories d'entretien et sauvegarde. */
+/* Écran Paramètres : compte, apparence, installation de l'application, catégories d'entretien et sauvegarde. */
 (function (EV) {
   'use strict';
 
@@ -79,6 +79,22 @@
     await afficherCategories(liste);
   }
 
+  // ---------- Installation de l'application ----------
+
+  const TEXTES_INSTALLATION = {
+    installee: "L'application est installée sur cet appareil. Elle s'ouvre aussi sans réseau.",
+    possible: "Installez-la : elle aura son icône sur l'écran d'accueil et s'ouvrira en plein écran, même sans réseau.",
+    iphone: "Sur iPhone ou iPad : dans Safari, touchez le bouton Partager, puis « Sur l'écran d'accueil ».",
+    menu: "Ouvrez le menu du navigateur (⋮), puis « Installer l'application » ou « Ajouter à l'écran d'accueil »."
+  };
+
+  function afficherInstallation(section) {
+    const etat = EV.installation.etat();
+    section.querySelector('[data-texte-installation]').textContent = TEXTES_INSTALLATION[etat];
+    const bouton = section.querySelector('[data-installer]');
+    bouton.hidden = etat !== 'possible';
+  }
+
   // ---------- Écran ----------
 
   EV.routeur.enregistrer('parametres', async (zone) => {
@@ -115,6 +131,16 @@
           </div>
         </section>
 
+        <section class="section" aria-labelledby="titre-application" data-installation>
+          <div class="ligne-reglage">
+            <div class="reglage-texte">
+              <h2 id="titre-application">Application</h2>
+              <p data-texte-installation></p>
+            </div>
+            <button class="bouton bouton-principal" type="button" data-installer hidden>${ui.icone('telecharger', 18)}<span>Installer</span></button>
+          </div>
+        </section>
+
         <section class="section" aria-labelledby="titre-categories">
           <div class="ligne-reglage ligne-reglage-titre">
             <div class="reglage-texte">
@@ -139,14 +165,17 @@
           <div class="ligne-reglage">
             <div class="reglage-texte">
               <h2 id="titre-sauvegarde">Sauvegarde</h2>
-              <p>Exporter toutes vos données dans un fichier, ou importer une sauvegarde depuis un autre appareil.</p>
+              <p>Les entretiens de chaque voiture s'exportent et s'importent en fichier CSV, depuis son onglet Entretiens (icônes à droite de Rechercher). Une sauvegarde complète, documents compris, viendra plus tard.</p>
             </div>
-            <span class="pastille">À venir · étape 8</span>
           </div>
         </section>
       </div>`;
 
     zone.querySelector('[data-deconnexion]').addEventListener('click', EV.compte.deconnecter);
+    const sectionInstallation = zone.querySelector('[data-installation]');
+    afficherInstallation(sectionInstallation);
+    EV.installation.quandChange(() => afficherInstallation(sectionInstallation));
+    sectionInstallation.querySelector('[data-installer]').addEventListener('click', () => EV.installation.installer());
     zone.querySelectorAll('[data-choix-theme]').forEach((bouton) => {
       bouton.addEventListener('click', () => EV.theme.definir(bouton.dataset.choixTheme));
     });
