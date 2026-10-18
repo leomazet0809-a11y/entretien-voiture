@@ -15,6 +15,14 @@
   --accent-texte: #FFFFFF;
   --accent-doux: #E9EBFF;
   --accent-anneau: rgb(67 83 255 / 0.22);
+  --danger: #D1342A;
+  --danger-survol: #B82A21;
+  --danger-texte: #FFFFFF;
+  --danger-doux: #FCE9E7;
+  --avertissement: #8A5A00;
+  --avertissement-doux: #FFF3D6;
+  --avertissement-bord: #F1D9A0;
+  --voile: rgb(14 15 18 / 0.45);
   --barre-fond: color-mix(in srgb, var(--fond) 84%, transparent);
   --ombre: 0 1px 2px rgb(23 23 26 / 0.05), 0 8px 24px rgb(23 23 26 / 0.06);
   --ombre-forte: 0 2px 6px rgb(23 23 26 / 0.06), 0 16px 40px rgb(23 23 26 / 0.12);
@@ -54,6 +62,14 @@
     --accent-texte: #0B0D24;
     --accent-doux: #22254A;
     --accent-anneau: rgb(124 135 255 / 0.3);
+  --danger: #FF7A6E;
+  --danger-survol: #FF938A;
+  --danger-texte: #1F0705;
+  --danger-doux: #3A1B19;
+  --avertissement: #F2C14E;
+  --avertissement-doux: #33290F;
+  --avertissement-bord: #5A4718;
+  --voile: rgb(0 0 0 / 0.6);
     --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
     --ombre-forte: 0 2px 6px rgb(0 0 0 / 0.35), 0 16px 40px rgb(0 0 0 / 0.45);
     color-scheme: dark;
@@ -72,6 +88,14 @@
   --accent-texte: #0B0D24;
   --accent-doux: #22254A;
   --accent-anneau: rgb(124 135 255 / 0.3);
+  --danger: #FF7A6E;
+  --danger-survol: #FF938A;
+  --danger-texte: #1F0705;
+  --danger-doux: #3A1B19;
+  --avertissement: #F2C14E;
+  --avertissement-doux: #33290F;
+  --avertissement-bord: #5A4718;
+  --voile: rgb(0 0 0 / 0.6);
   --ombre: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.25);
   --ombre-forte: 0 2px 6px rgb(0 0 0 / 0.35), 0 16px 40px rgb(0 0 0 / 0.45);
   color-scheme: dark;
@@ -266,6 +290,17 @@ a { color: inherit; }
 }
 .bouton-secondaire:hover { background: var(--surface-2); }
 
+.bouton-danger {
+  background: var(--danger);
+  color: var(--danger-texte);
+}
+.bouton-danger:hover { background: var(--danger-survol); }
+
+.bouton-texte-danger { color: var(--danger); }
+.bouton-texte-danger:hover { background: var(--danger-doux); }
+
+.bouton:disabled { opacity: 0.6; cursor: progress; }
+
 .bouton-icone {
   width: 44px;
   padding: 0;
@@ -368,6 +403,7 @@ a { color: inherit; }
 .plaque {
   display: inline-flex;
   align-items: stretch;
+  max-width: 100%;
   height: 44px;
   border: 2px solid var(--plaque-cadre);
   border-radius: 7px;
@@ -400,14 +436,276 @@ a { color: inherit; }
 }
 
 .plaque-numero {
-  display: flex;
-  align-items: center;
+  min-width: 0;
   padding: 0 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 40px;
   font-family: var(--police-mono);
   font-size: 1.375rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   font-variant-numeric: tabular-nums;
+}
+
+.vide-compact { padding: 32px 24px; }
+
+/* ---------- Alerte (données non conservées) ---------- */
+
+.alerte-zone {
+  max-width: var(--largeur-max);
+  margin: 0 auto;
+  padding-top: 16px;
+  padding-left: var(--gouttiere-g);
+  padding-right: var(--gouttiere-d);
+}
+
+.alerte {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--avertissement-bord);
+  border-radius: var(--rayon-moyen);
+  background: var(--avertissement-doux);
+  font-size: 0.9375rem;
+}
+
+.alerte [data-icone] { color: var(--avertissement); padding-top: 1px; }
+
+/* ---------- Cartes des voitures (accueil) ---------- */
+
+.grille-voitures {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  gap: 16px;
+}
+
+.carte-voiture {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+  padding: 20px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  text-decoration: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.carte-voiture:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--bordure));
+  box-shadow: var(--ombre);
+}
+
+.carte-voiture .plaque { justify-self: start; box-shadow: none; }
+
+.carte-voiture-titre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-width: 0;
+}
+
+.carte-voiture-titre h2 {
+  margin: 0;
+  font-size: 1.1875rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+}
+
+.carte-voiture-infos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--bordure);
+}
+
+.carte-voiture-infos dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--texte-2);
+}
+
+.carte-voiture-infos dd {
+  margin: 2px 0 0;
+  font-family: var(--police-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* ---------- Fiche voiture ---------- */
+
+.entete-voiture {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px 24px;
+  margin-bottom: 24px;
+}
+
+.entete-voiture-identite {
+  display: grid;
+  justify-items: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.entete-voiture h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 1.35rem + 1.4vw, 2.25rem);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  overflow-wrap: anywhere;
+}
+
+.entete-voiture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ---------- Fenêtres (formulaires, confirmations) ---------- */
+
+body:has(.fenetre[open]) { overflow: hidden; }
+
+.fenetre {
+  width: min(520px, 100% - 32px);
+  max-height: min(90dvh, 760px);
+  padding: 0;
+  border: 1px solid var(--bordure);
+  border-radius: 20px;
+  background: var(--surface);
+  color: var(--texte);
+  box-shadow: var(--ombre-forte);
+}
+
+.fenetre[open] { animation: fenetre-entree 0.18s ease-out; }
+
+.fenetre::backdrop { background: var(--voile); }
+
+@keyframes fenetre-entree {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+
+.fenetre-forme {
+  display: flex;
+  flex-direction: column;
+  max-height: inherit;
+}
+
+.fenetre-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 14px 6px 24px;
+}
+
+.fenetre-entete h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.fenetre-corps {
+  display: grid;
+  gap: 18px;
+  padding: 10px 24px 22px;
+  overflow-y: auto;
+}
+
+.fenetre-texte {
+  margin: 0;
+  color: var(--texte-2);
+}
+
+.fenetre-pied {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 24px 20px;
+  border-top: 1px solid var(--bordure);
+}
+
+/* ---------- Champs de formulaire ---------- */
+
+.champ {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.champ label {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.facultatif {
+  font-weight: 400;
+  color: var(--texte-2);
+}
+
+.champ input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-moyen);
+  background: var(--fond);
+  color: var(--texte);
+  font: inherit;
+  font-size: 1rem; /* 16 px : évite le zoom automatique sur iPhone */
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.champ input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-anneau);
+}
+
+.champ input[aria-invalid="true"] { border-color: var(--danger); }
+
+.champ .saisie-plaque {
+  font-family: var(--police-mono);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.champ .saisie-courte { max-width: 160px; }
+
+.champ-aide,
+.champ-erreur {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.champ-aide { color: var(--texte-2); }
+
+.champ-erreur {
+  color: var(--danger);
+  font-weight: 500;
+}
+
+.champs-ligne {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+  gap: 18px 16px;
 }
 
 /* ---------- Paramètres ---------- */
@@ -560,6 +858,42 @@ a { color: inherit; }
 
 @media (max-width: 559px) {
   .marque-nom { display: none; }
+
+  /* Les fenêtres deviennent des panneaux qui montent du bas de l'écran */
+  .fenetre {
+    width: 100%;
+    max-width: 100%;
+    max-height: 92dvh;
+    margin: auto 0 0;
+    border-bottom: 0;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .fenetre[open] { animation-name: panneau-entree; }
+
+  .fenetre-entete { padding-left: max(20px, env(safe-area-inset-left, 0px)); }
+
+  .fenetre-corps {
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+  }
+
+  .fenetre-pied {
+    padding-left: max(20px, env(safe-area-inset-left, 0px));
+    padding-right: max(20px, env(safe-area-inset-right, 0px));
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .fenetre-pied .bouton { flex: 1; }
+
+  .entete-voiture-actions { width: 100%; }
+
+  .entete-voiture-actions .bouton { flex: 1; }
+}
+
+@keyframes panneau-entree {
+  from { transform: translateY(100%); }
+  to { transform: none; }
 }
 
 /* Très petits téléphones : le bouton Km garde son texte mais perd son icône */

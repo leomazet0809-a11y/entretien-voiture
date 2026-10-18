@@ -48,6 +48,13 @@
   </div>
 </header>
 
+<div class="alerte-zone" id="alerte-stockage" hidden>
+  <p class="alerte" role="alert">
+    <span data-icone="alerte" aria-hidden="true"></span>
+    <span>Ce navigateur ne permet pas d'enregistrer les données : tout ce que vous saisissez sera perdu en fermant la page. Évitez la navigation privée.</span>
+  </p>
+</div>
+
 <main id="contenu" class="contenu" tabindex="-1"></main>
 
 <div class="messages" id="messages" aria-live="polite"></div>
@@ -55,7 +62,11 @@
 <script src="js/ui.js"></script>
 <script src="js/theme.js"></script>
 <script src="js/routeur.js"></script>
+<script src="js/stockage.js"></script>
+<script src="js/voitures.js"></script>
+<script src="js/ecrans/fenetre-voiture.js"></script>
 <script src="js/ecrans/accueil.js"></script>
+<script src="js/ecrans/voiture.js"></script>
 <script src="js/ecrans/parametres.js"></script>
 <script src="js/app.js"></script>
 </body>

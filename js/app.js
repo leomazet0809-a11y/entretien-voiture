@@ -29,7 +29,7 @@
     });
   }
 
-  function demarrer() {
+  async function demarrer() {
     ui.remplirIcones();
     theme.appliquer();
 
@@ -41,6 +41,9 @@
       ui.toast("Le relevé du kilométrage arrive à l'étape 6.");
     });
     brancherRecherche();
+
+    const donneesConservees = await EV.stockage.demarrer();
+    document.getElementById('alerte-stockage').hidden = donneesConservees;
 
     routeur.afficher();
   }

@@ -24,7 +24,7 @@
             </div>
             <div class="segments" role="radiogroup" aria-labelledby="titre-apparence">
               ${CHOIX_THEME.map(([valeur, libelle]) => `
-                <button type="button" role="radio" aria-checked="false" data-choix-theme="${valeur}">${libelle}</button>`).join('')}
+                <button type="button" role="radio" aria-checked="${valeur === EV.theme.choixActuel()}" data-choix-theme="${valeur}">${libelle}</button>`).join('')}
             </div>
           </div>
         </section>
@@ -53,6 +53,5 @@
     conteneur.querySelectorAll('[data-choix-theme]').forEach((bouton) => {
       bouton.addEventListener('click', () => EV.theme.definir(bouton.dataset.choixTheme));
     });
-    EV.theme.appliquer();
   });
 })(window.EV = window.EV || {});

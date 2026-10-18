@@ -60,5 +60,5 @@
 
   sombreSurAppareil.addEventListener('change', appliquer);
 
-  EV.theme = { appliquer, definir, basculer };
+  EV.theme = { appliquer, definir, basculer, choixActuel: () => choix };
 })(window.EV = window.EV || {});
