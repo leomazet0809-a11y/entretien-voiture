@@ -30,8 +30,14 @@
     });
   }
 
+  // Changer d'onglet dans la même fiche ne fait pas remonter la page ; changer d'écran, si.
+  let ecranPrecedent = location.hash.split('/').slice(0, 2).join('/');
   window.addEventListener('hashchange', async () => {
+    const ecran = location.hash.split('/').slice(0, 2).join('/');
+    const memeEcran = ecran === ecranPrecedent;
+    ecranPrecedent = ecran;
     await afficher();
+    if (memeEcran) return;
     window.scrollTo(0, 0);
     document.getElementById('contenu').focus({ preventScroll: true });
   });

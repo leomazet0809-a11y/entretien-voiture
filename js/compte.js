@@ -100,6 +100,8 @@
 
     firebase.initializeApp(EV.firebaseConfig);
     auth = firebase.auth();
+    // Uniquement pour tester en local avec les émulateurs Firebase (jamais défini en ligne).
+    if (EV.firebaseEmulateurs) auth.useEmulator(EV.firebaseEmulateurs.auth);
 
     const dejaConnecte = await new Promise((ok) => {
       const arreter = auth.onAuthStateChanged((u) => { arreter(); ok(u); });

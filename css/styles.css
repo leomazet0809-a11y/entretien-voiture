@@ -15,6 +15,7 @@
   --accent-texte: #FFFFFF;
   --accent-doux: #E9EBFF;
   --accent-anneau: rgb(67 83 255 / 0.22);
+  --courbe: #4353FF;
   --danger: #D1342A;
   --danger-survol: #B82A21;
   --danger-texte: #FFFFFF;
@@ -42,7 +43,7 @@
   /* Formes */
   --rayon: 16px;
   --rayon-moyen: 12px;
-  --largeur-max: 1120px;
+  --largeur-max: 1600px;
   --gouttiere-g: max(16px, env(safe-area-inset-left, 0px));
   --gouttiere-d: max(16px, env(safe-area-inset-right, 0px));
 
@@ -62,6 +63,7 @@
     --accent-texte: #0B0D24;
     --accent-doux: #22254A;
     --accent-anneau: rgb(124 135 255 / 0.3);
+    --courbe: #7480FF;
   --danger: #FF7A6E;
   --danger-survol: #FF938A;
   --danger-texte: #1F0705;
@@ -88,6 +90,7 @@
   --accent-texte: #0B0D24;
   --accent-doux: #22254A;
   --accent-anneau: rgb(124 135 255 / 0.3);
+  --courbe: #7480FF;
   --danger: #FF7A6E;
   --danger-survol: #FF938A;
   --danger-texte: #1F0705;
@@ -148,6 +151,9 @@ a { color: inherit; }
 
 .icone { display: block; flex: none; }
 
+/* Un élément masqué l'est toujours, même s'il a sa propre mise en page */
+[hidden] { display: none !important; }
+
 /* ---------- Barre du haut ---------- */
 
 .barre {
@@ -166,15 +172,13 @@ a { color: inherit; }
   padding-block: 12px;
   padding-left: var(--gouttiere-g);
   padding-right: var(--gouttiere-d);
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  grid-template-areas: "marque recherche actions";
+  display: flex;
   align-items: center;
-  gap: 10px 24px;
+  justify-content: space-between;
+  gap: 16px;
 }
 
 .marque {
-  grid-area: marque;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -195,13 +199,14 @@ a { color: inherit; }
   place-items: center;
 }
 
+/* Champ Rechercher, dans l'en-tête de l'onglet Entretiens.
+   Son panneau de résultats s'aligne sur le groupe Rechercher + icônes (.outils-tableur) : il ne sort pas de l'écran. */
 .recherche {
-  grid-area: recherche;
-  position: relative;
-  width: 100%;
-  max-width: 560px;
-  justify-self: center;
+  flex: 1 1 auto;
+  min-width: 0;
 }
+
+.recherche-saisie { position: relative; }
 
 .recherche-icone {
   position: absolute;
@@ -235,20 +240,134 @@ a { color: inherit; }
 
 .recherche-panneau {
   position: absolute;
+  z-index: 15;
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  padding: 14px 16px;
+  max-height: min(70dvh, 560px);
+  padding: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   border-radius: var(--rayon-moyen);
   border: 1px solid var(--bordure);
   background: var(--surface);
-  color: var(--texte-2);
+  color: var(--texte);
   box-shadow: var(--ombre-forte);
   font-size: 0.9375rem;
 }
 
+.resultats-resume,
+.resultats-vide,
+.resultats-reste {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--texte-2);
+  font-size: 0.875rem;
+}
+
+.resultats-groupe + .resultats-groupe {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid var(--bordure);
+}
+
+.resultats-groupe h3 {
+  margin: 0;
+  padding: 8px 10px 4px;
+  color: var(--texte-2);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.resultats-groupe h3 span {
+  margin-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.resultats-groupe ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.resultat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--texte);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.resultat:hover,
+.resultat:focus-visible { background: var(--surface-2); }
+
+.resultat:focus-visible { outline-offset: -2px; }
+
+.resultat-icone {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--accent-doux);
+  color: var(--accent);
+}
+
+.resultat-textes {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Titre et détail tiennent sur deux lignes au plus, sans couper au milieu sur téléphone */
+.resultat-titre,
+.resultat-detail {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.resultat-titre { font-weight: 600; }
+
+.resultat-detail {
+  color: var(--texte-2);
+  font-size: 0.875rem;
+}
+
+.resultat-plaque {
+  flex: none;
+  padding: 2px 8px;
+  border: 1px solid var(--bordure);
+  border-radius: 6px;
+  font-family: var(--police-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.recherche-panneau mark {
+  padding: 0 1px;
+  border-radius: 3px;
+  background: var(--accent-doux);
+  color: inherit;
+  font-weight: 700;
+}
+
 .actions {
-  grid-area: actions;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -548,18 +667,27 @@ a { color: inherit; }
 .entete-voiture {
   display: flex;
   flex-wrap: wrap;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 16px 24px;
   margin-bottom: 24px;
 }
 
+/* La plaque, avec à sa droite la marque, le modèle et l'année */
 .entete-voiture-identite {
-  display: grid;
-  justify-items: start;
-  gap: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
   min-width: 0;
 }
+
+.entete-voiture-nom {
+  flex: 1 1 120px;
+  min-width: 0;
+}
+
+.entete-voiture-nom .sous-titre { margin-top: 2px; }
 
 .entete-voiture h1 {
   margin: 0;
@@ -589,6 +717,14 @@ body:has(.fenetre[open]) { overflow: hidden; }
   background: var(--surface);
   color: var(--texte);
   box-shadow: var(--ombre-forte);
+}
+
+.fenetre-large { width: min(760px, 100% - 32px); }
+
+/* Formulaire d'événement : large, pour qu'un entretien tienne sur une ligne (catégorie, détail, coût) */
+.fenetre-evenement {
+  width: min(1080px, 100% - 32px);
+  max-height: min(92dvh, 960px);
 }
 
 .fenetre[open] { animation: fenetre-entree 0.18s ease-out; }
@@ -628,6 +764,15 @@ body:has(.fenetre[open]) { overflow: hidden; }
   overflow-y: auto;
 }
 
+/* Résumé d'un import CSV, ou liste des problèmes trouvés dans le fichier */
+.liste-import {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.45;
+}
+
 .fenetre-texte {
   margin: 0;
   color: var(--texte-2);
@@ -641,10 +786,14 @@ body:has(.fenetre[open]) { overflow: hidden; }
   border-top: 1px solid var(--bordure);
 }
 
+.fenetre-supprimer { margin-right: auto; }
+
 /* ---------- Champs de formulaire ---------- */
 
+/* align-content : côte à côte, les champs restent alignés même si l'un d'eux a une aide ou une erreur en dessous */
 .champ {
   display: grid;
+  align-content: start;
   gap: 6px;
   min-width: 0;
 }
@@ -659,7 +808,9 @@ body:has(.fenetre[open]) { overflow: hidden; }
   color: var(--texte-2);
 }
 
-.champ input {
+.champ input,
+.champ select,
+.champ textarea {
   width: 100%;
   height: 48px;
   padding: 0 14px;
@@ -672,13 +823,38 @@ body:has(.fenetre[open]) { overflow: hidden; }
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 
-.champ input:focus {
+/* Liste déroulante : flèche dessinée avec les couleurs du thème */
+.champ select {
+  padding-right: 40px;
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--texte-2) 50%),
+    linear-gradient(135deg, var(--texte-2) 50%, transparent 50%);
+  background-position: calc(100% - 21px) 52%, calc(100% - 16px) 52%;
+  background-size: 5px 5px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+
+.champ textarea {
+  height: auto;
+  min-height: 72px;
+  padding: 12px 14px;
+  line-height: 1.45;
+  resize: vertical;
+}
+
+.champ [data-saisie-date] { font-variant-numeric: tabular-nums; }
+
+.champ input:focus,
+.champ select:focus,
+.champ textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 4px var(--accent-anneau);
 }
 
-.champ input[aria-invalid="true"] { border-color: var(--danger); }
+.champ [aria-invalid="true"] { border-color: var(--danger); }
 
 .champ .saisie-plaque {
   font-family: var(--police-mono);
@@ -708,11 +884,506 @@ body:has(.fenetre[open]) { overflow: hidden; }
   gap: 18px 16px;
 }
 
+/* Groupes de champs dans le formulaire d'événement */
+.bloc {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.bloc legend {
+  margin-bottom: 4px;
+  padding: 0;
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.lignes-entretien {
+  display: grid;
+  gap: 8px;
+}
+
+.ligne-entretien {
+  display: grid;
+  gap: 4px;
+  padding: 6px 12px 12px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-moyen);
+  background: var(--fond);
+}
+
+/* Catégorie, Détail et Coût côte à côte ; le coût n'apparaît qu'en « coût par entretien » */
+.ligne-entretien-champs {
+  display: grid;
+  grid-template-columns: minmax(180px, 240px) minmax(0, 1fr) auto;
+  gap: 8px 12px;
+  align-items: start;
+}
+
+.ligne-entretien .champ-cout-ligne { width: 150px; }
+
+/* Le détail commence sur une ligne et s'agrandit avec le texte */
+.ligne-entretien .champ-detail textarea {
+  min-height: 48px;
+  max-height: 260px;
+  resize: none;
+}
+
+.ligne-entretien .champ input,
+.ligne-entretien .champ select,
+.ligne-entretien .champ textarea { background-color: var(--surface); }
+
+.ligne-entretien-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 32px;
+  margin-right: -6px;
+}
+
+.ligne-entretien-entete .bouton-icone {
+  width: 36px;
+  height: 36px;
+}
+
+.ligne-entretien-titre {
+  margin: 0;
+  color: var(--texte-2);
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bouton-ajout-ligne,
+.bloc > .segments { justify-self: start; }
+
+.cout-total {
+  margin: 0;
+  font-family: var(--police-mono);
+  font-size: 1.0625rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Tableur des entretiens ---------- */
+
+.tableur-entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin: 8px 0 12px;
+}
+
+.tableur-entete h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.tableur-resume {
+  margin: 0;
+  color: var(--texte-2);
+  font-size: 0.9375rem;
+}
+
+/* Le tableur s'allonge avec la page : c'est la page entière qui défile, avec une seule barre de défilement.
+   Sur un écran étroit, la zone défile aussi de gauche à droite, toutes colonnes comprises. */
+.tableur-zone {
+  overflow-x: auto;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+/* Largeurs : la colonne Détail prend toute la place qui reste (360 px au moins) ; Société a 240 px ;
+   les autres colonnes s'ajustent à leur contenu. En dessous, la zone défile de gauche à droite. */
+.tableur {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.9375rem;
+}
+
+.tableur th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--bordure);
+  background: var(--surface-2);
+  color: var(--texte-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tableur td {
+  padding: 10px 12px;
+  background: var(--surface);
+  vertical-align: top;
+}
+
+.tableur .col-date {
+  width: 1%;
+  min-width: 124px;
+  white-space: nowrap;
+  border-right: 1px solid var(--bordure);
+}
+
+/* Les entretiens d'un même événement sont serrés les uns sous les autres : l'espace sépare les événements */
+.tableur tbody.groupe tr:not(:first-child) td { padding-top: 2px; }
+
+.tableur tbody.groupe tr:not(:last-child) td { padding-bottom: 2px; }
+
+.tableur tbody.groupe + tbody.groupe tr:first-child td { border-top: 1px solid var(--bordure); }
+
+.tableur tbody.groupe { cursor: pointer; }
+
+.tableur tbody.groupe:hover td { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+
+.tableur .col-km,
+.tableur .col-cout {
+  width: 1%;
+  font-family: var(--police-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tableur .col-categorie { width: 1%; }
+
+.tableur .col-cout { text-align: right; }
+
+.tableur .col-societe {
+  width: 240px;
+  min-width: 240px;
+  overflow-wrap: anywhere;
+}
+
+.tableur td.col-societe { font-weight: 500; }
+
+.tableur .col-detail {
+  min-width: 360px;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.etiquette-categorie {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--accent-doux);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.ouvrir-evenement {
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--texte);
+  font-family: var(--police-mono);
+  font-size: inherit;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  cursor: pointer;
+}
+
+.inconnu {
+  color: var(--texte-2);
+  font-family: var(--police);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.ligne-total td { padding-top: 2px; }
+
+.total-libelle {
+  color: var(--texte-2);
+  font-size: 0.875rem;
+  text-align: right;
+}
+
+.ligne-total .col-cout { font-weight: 650; }
+
+.groupe-signale td { animation: signale 2.4s ease-out; }
+
+@keyframes signale {
+  0%, 40% { background-color: var(--accent-doux); }
+}
+
+/* ---------- Onglets de la fiche voiture ---------- */
+
+.onglets {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  /* Trait sous les onglets, dessiné en ombre : le soulignement de l'onglet actif le recouvre sans rien faire déborder */
+  box-shadow: inset 0 -1px 0 var(--bordure);
+}
+
+.onglet {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border-bottom: 2px solid transparent;
+  color: var(--texte-2);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.onglet:hover { color: var(--texte); }
+
+.onglet[aria-current="page"] {
+  border-bottom-color: var(--accent);
+  color: var(--texte);
+}
+
+.onglet-compte {
+  min-width: 22px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--texte-2);
+  font-size: 0.75rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* En-tête d'un onglet : titre, bouton (Ajouter ou Km), champ Rechercher, puis le résumé en dessous */
+.onglet-entete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 4px 0 16px;
+}
+
+.onglet-entete h2 {
+  margin: 0 4px 0 0;
+  font-size: 1.25rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.onglet-entete .tableur-resume { flex-basis: 100%; }
+
+/* Rechercher, puis les icônes Exporter et Importer : toujours ensemble sur la même ligne */
+.outils-tableur {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1 1 300px;
+  max-width: 540px;
+  min-width: 0;
+}
+
+.outils-tableur .bouton-icone { flex: none; }
+
+.outils-tableur .bouton:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Kilométrage ---------- */
+
+.tuiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.tuile {
+  padding: 16px 18px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+.tuile p { margin: 0; }
+
+.tuile-libelle {
+  color: var(--texte-2);
+  font-size: 0.875rem;
+}
+
+.tuile-valeur {
+  margin: 2px 0 !important;
+  font-size: 1.625rem;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.tuile-note {
+  color: var(--texte-2);
+  font-size: 0.8125rem;
+}
+
+.carte-graphique {
+  margin-bottom: 24px;
+  padding: 18px 18px 10px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+.carte-graphique h2 {
+  margin: 0 0 8px;
+  font-size: 1.0625rem;
+  font-weight: 650;
+}
+
+.graphique {
+  position: relative;
+  min-height: 220px;
+}
+
+.graphique-svg {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+  border-radius: 8px;
+}
+
+.graphique-grille { stroke: var(--bordure); stroke-width: 1; }
+
+.graphique-axe,
+.graphique-graduation { stroke: var(--bordure); stroke-width: 1; }
+
+.graphique-texte {
+  fill: var(--texte-2);
+  font-family: var(--police);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.graphique-etiquette {
+  fill: var(--texte);
+  font-weight: 650;
+}
+
+.graphique-ligne {
+  fill: none;
+  stroke: var(--courbe);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.graphique-aire { fill: var(--courbe); opacity: 0.1; }
+
+.graphique-point {
+  fill: var(--courbe);
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.graphique-point-actif { r: 6px; }
+
+.graphique-repere { stroke: var(--texte-2); stroke-width: 1; }
+
+.graphique-zone {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.graphique-bulle {
+  position: absolute;
+  display: grid;
+  padding: 8px 12px;
+  border: 1px solid var(--bordure);
+  border-radius: 10px;
+  background: var(--surface);
+  box-shadow: var(--ombre-forte);
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  white-space: nowrap;
+}
+
+.graphique-bulle strong {
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.graphique-bulle span {
+  color: var(--texte-2);
+  font-size: 0.8125rem;
+}
+
+.tableau-releves { min-width: 520px; }
+
+.tableau-releves tbody tr { cursor: pointer; }
+
+.tableau-releves tbody tr + tr td { border-top: 1px solid var(--bordure); }
+
+.tableau-releves tbody tr:hover td { background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+
+.tableau-releves .col-ecart {
+  font-family: var(--police-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.ecart-duree {
+  color: var(--texte-2);
+  font-family: var(--police);
+  font-size: 0.8125rem;
+}
+
+.ecart-incoherent {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.origine {
+  display: inline-block;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.origine-evenement { background: var(--accent-doux); }
+
+/* Avertissement non bloquant (kilométrage incohérent) */
+.avertissement {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px solid var(--avertissement-bord);
+  border-radius: var(--rayon-moyen);
+  background: var(--avertissement-doux);
+  font-size: 0.9375rem;
+}
+
 /* ---------- Paramètres ---------- */
 
 .sections {
   display: grid;
   gap: 16px;
+  max-width: 880px; /* sur grand écran, les réglages gardent une largeur confortable à lire */
 }
 
 .section {
@@ -759,6 +1430,60 @@ body:has(.fenetre[open]) { overflow: hidden; }
   font-size: 0.8125rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* Catégories d'entretien */
+.ligne-reglage.ligne-reglage-titre { padding-bottom: 14px; }
+
+.ajout-categorie { padding: 0 24px 18px; }
+
+.ajout-categorie-ligne {
+  display: flex;
+  gap: 8px;
+}
+
+.ajout-categorie-ligne input {
+  flex: 1;
+  min-width: 0;
+}
+
+.ajout-categorie-ligne .bouton { height: 48px; }
+
+.liste-categories {
+  margin: 0;
+  padding: 0 12px 8px 24px;
+  list-style: none;
+  border-top: 1px solid var(--bordure);
+}
+
+.categorie {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--bordure);
+}
+
+.categorie:last-child { border-bottom: 0; }
+
+.categorie-nom {
+  flex: 1;
+  min-width: 0;
+  padding-block: 8px;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.categorie-usage {
+  margin-right: 8px;
+  color: var(--texte-2);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.categorie-vide {
+  padding: 16px 0;
+  color: var(--texte-2);
 }
 
 /* Choix segmenté (Automatique / Clair / Sombre) */
@@ -832,33 +1557,46 @@ body:has(.fenetre[open]) { overflow: hidden; }
   to { opacity: 1; transform: none; }
 }
 
+/* ---------- Grands écrans ---------- */
+
+/* Le tableur tient en largeur : la ligne des titres de colonnes reste visible sous la barre du haut pendant le défilement */
+@media (min-width: 1240px) {
+  .tableur-zone { overflow: visible; }
+
+  .tableur th { top: 69px; } /* hauteur de la barre du haut */
+
+  .tableur thead th:first-child { border-top-left-radius: calc(var(--rayon) - 1px); }
+
+  .tableur thead th:last-child { border-top-right-radius: calc(var(--rayon) - 1px); }
+}
+
 /* ---------- Petits écrans ---------- */
 
 @media (max-width: 879px) {
-  .barre-interne {
-    grid-template-columns: auto minmax(0, 1fr);
-    grid-template-areas:
-      "marque actions"
-      "recherche recherche";
-    padding-block: 10px 12px;
-  }
-
-  .actions { justify-self: end; gap: 6px; }
-
-  .actions .bouton { padding: 0 12px; gap: 6px; }
-
-  .actions .bouton-icone { width: 40px; padding: 0; }
-
-  .recherche { max-width: none; }
+  .barre-interne { padding-block: 10px; }
 
   .contenu { padding-block: 24px 96px; }
+
+  .ajout-categorie { padding: 0 18px 16px; }
+
+  .liste-categories { padding: 0 6px 6px 18px; }
 
   .ligne-reglage { padding: 18px; }
 }
 
-@media (max-width: 559px) {
-  .marque-nom { display: none; }
+/* Fenêtre d'événement étroite : Catégorie et Coût sur une ligne, le Détail en dessous */
+@media (max-width: 759px) {
+  .ligne-entretien-champs { grid-template-columns: minmax(0, 1fr) auto; }
 
+  .ligne-entretien .champ-detail {
+    grid-column: 1 / -1;
+    order: 1;
+  }
+
+  .ligne-entretien .champ-cout-ligne { width: 120px; }
+}
+
+@media (max-width: 559px) {
   /* Les fenêtres deviennent des panneaux qui montent du bas de l'écran */
   .fenetre {
     width: 100%;
@@ -884,11 +1622,37 @@ body:has(.fenetre[open]) { overflow: hidden; }
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   }
 
+  .fenetre-pied { flex-wrap: wrap; }
+
   .fenetre-pied .bouton { flex: 1; }
+
+  /* Sur téléphone, « Supprimer » passe seul sur une ligne, sous les autres boutons */
+  .fenetre-pied .fenetre-supprimer {
+    flex-basis: 100%;
+    order: 3;
+    margin-right: 0;
+  }
+
+  .ligne-entretien { padding: 6px 12px 12px; }
+
+  .entete-voiture-identite { column-gap: 14px; }
+
+  .entete-voiture h1 { font-size: 1.5rem; }
+
+  /* Plaque un peu plus petite, pour laisser la place au nom de la voiture à sa droite */
+  .entete-voiture .plaque { height: 38px; }
+
+  .entete-voiture .plaque-bande { width: 20px; font-size: 0.6875rem; }
+
+  .entete-voiture .plaque-numero { padding: 0 10px; line-height: 34px; font-size: 1.125rem; }
 
   .entete-voiture-actions { width: 100%; }
 
   .entete-voiture-actions .bouton { flex: 1; }
+
+  .segments { width: 100%; }
+
+  .segments button { flex: 1; }
 }
 
 @keyframes panneau-entree {
@@ -896,15 +1660,15 @@ body:has(.fenetre[open]) { overflow: hidden; }
   to { transform: none; }
 }
 
-/* Très petits téléphones : le bouton Km garde son texte mais perd son icône */
-@media (max-width: 389px) {
-  #bouton-km [data-icone] { display: none; }
-}
+@media (max-width: 359px) {
+  .marque-nom { display: none; }
 
-@media (max-width: 339px) {
-  .actions { gap: 4px; }
-  .actions .bouton { padding: 0 10px; }
-  .actions .bouton-icone { width: 38px; padding: 0; }
+  .onglet { gap: 6px; padding: 0 8px; }
+
+  .segments button {
+    padding: 0 8px;
+    font-size: 0.875rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -915,7 +1679,4 @@ body:has(.fenetre[open]) { overflow: hidden; }
 }
 
 /* Avant la connexion : seuls le logo et le bouton de thème restent dans la barre du haut */
-.non-connecte .recherche,
-.non-connecte #bouton-ajouter,
-.non-connecte #bouton-km,
 .non-connecte #lien-parametres { display: none; }

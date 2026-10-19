@@ -15,7 +15,9 @@
     crayon: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
     corbeille: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
     fermer: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
-    alerte: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>'
+    alerte: '<circle cx="12" cy="12" r="10"/><path d="M12 8v4"/><path d="M12 16h.01"/>',
+    telecharger: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>',
+    importer: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>'
   };
 
   function icone(nom, taille = 20) {
@@ -59,13 +61,16 @@
 
   // Fenêtre par-dessus la page, pour un formulaire ou une confirmation.
   // `preparer(formulaire)` est appelé à l'ouverture ; `valider(formulaire)` renvoie true pour fermer.
+  // `supprimer()`, s'il est fourni, ajoute un bouton Supprimer ; il renvoie true pour fermer la fenêtre.
+  // `classe` ajoute une classe CSS à la fenêtre (largeur propre à un formulaire).
+  // `annuler: false` retire le bouton Annuler (fenêtre de consultation avec un seul bouton « Fermer »).
   // Renvoie une promesse : true si l'utilisateur a validé, false s'il a annulé.
   let compteurFenetres = 0;
-  function fenetre({ titre, contenu, libelleValider = 'Enregistrer', danger = false, preparer, valider = () => true }) {
+  function fenetre({ titre, contenu, libelleValider = 'Enregistrer', danger = false, large = false, classe = '', annuler = true, preparer, valider = () => true, supprimer }) {
     return new Promise((resoudre) => {
       const idTitre = `fenetre-titre-${++compteurFenetres}`;
       const boite = document.createElement('dialog');
-      boite.className = 'fenetre';
+      boite.className = ['fenetre', large && 'fenetre-large', classe].filter(Boolean).join(' ');
       boite.setAttribute('aria-labelledby', idTitre);
       boite.innerHTML = `
         <form class="fenetre-forme" novalidate>
@@ -75,7 +80,8 @@
           </div>
           <div class="fenetre-corps">${contenu}</div>
           <div class="fenetre-pied">
-            <button type="button" class="bouton bouton-secondaire" data-fermer>Annuler</button>
+            ${supprimer ? `<button type="button" class="bouton bouton-texte-danger fenetre-supprimer" data-supprimer-fenetre>${icone('corbeille', 18)}<span>Supprimer</span></button>` : ''}
+            ${annuler ? '<button type="button" class="bouton bouton-secondaire" data-fermer>Annuler</button>' : ''}
             <button type="submit" class="bouton ${danger ? 'bouton-danger' : 'bouton-principal'}">${echapper(libelleValider)}</button>
           </div>
         </form>`;
@@ -85,6 +91,11 @@
       let validee = false;
 
       boite.querySelectorAll('[data-fermer]').forEach((b) => b.addEventListener('click', () => boite.close()));
+      if (supprimer) {
+        boite.querySelector('[data-supprimer-fenetre]').addEventListener('click', async () => {
+          if (await supprimer()) boite.close();
+        });
+      }
       formulaire.addEventListener('submit', async (e) => {
         e.preventDefault();
         boutonValider.disabled = true;
@@ -106,8 +117,12 @@
       });
 
       document.body.appendChild(boite);
+      formulaire.querySelectorAll('[data-saisie-date]').forEach(brancherDate);
+      formulaire.addEventListener('input', virgulesDansLesMontants);
       if (preparer) preparer(formulaire);
       boite.showModal();
+      // Date mise en avant à l'ouverture : elle est sélectionnée, on tape la nouvelle par-dessus.
+      if (document.activeElement?.matches('[data-saisie-date]') && boite.contains(document.activeElement)) document.activeElement.select();
     });
   }
 
@@ -127,11 +142,77 @@
       </div>`;
   }
 
+  // Champ de date tapée au clavier, au format JJ/MM/AAAA, sans calendrier. `valeur` : date ISO (« 2025-01-13 ») ou vide.
+  function champDate({ valeur = '', attributs = '', ...reste }) {
+    return champ({
+      ...reste,
+      valeur: EV.format.date(valeur),
+      attributs: `data-saisie-date inputmode="numeric" autocomplete="off" maxlength="10" placeholder="JJ/MM/AAAA" ${attributs}`
+    });
+  }
+
+  // « 13012025 » → « 13/01/2025 ». `barreFinale` : on ajoute déjà la barre qui suit le jour ou le mois complet (« 13/ »).
+  function chiffresEnDate(chiffres, barreFinale) {
+    let texte = chiffres.slice(0, 2);
+    if (chiffres.length > 2 || (barreFinale && chiffres.length === 2)) texte += '/';
+    texte += chiffres.slice(2, 4);
+    if (chiffres.length > 4 || (barreFinale && chiffres.length === 4)) texte += '/';
+    return texte + chiffres.slice(4, 8);
+  }
+
+  // Pendant la frappe, les barres s'ajoutent toutes seules : on ne tape que les chiffres.
+  function brancherDate(saisie) {
+    // « / », « . », « - » ou espace tapé après un seul chiffre : on complète par un zéro (« 3/ » → « 03/ »).
+    saisie.addEventListener('beforeinput', (e) => {
+      if (!/^[/.\- ]$/.test(e.data || '')) return;
+      e.preventDefault();
+      const valeur = saisie.value;
+      if (saisie.selectionStart !== valeur.length) return;
+      let chiffres = valeur.replace(/\D/g, '');
+      if (/^\d$/.test(valeur.split('/').pop()) && chiffres.length < 4) chiffres = `${chiffres.slice(0, -1)}0${chiffres.slice(-1)}`;
+      saisie.value = chiffresEnDate(chiffres, true);
+      saisie.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+
+    saisie.addEventListener('input', (e) => {
+      const valeur = saisie.value;
+      const suppression = /^delete/.test(e.inputType || '');
+      // Date collée ou complétée par le navigateur : « 2025-01-13 », « 3/1/2025 ».
+      const iso = valeur.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      const complete = !suppression && valeur.trim().match(/^(\d{1,2})[/.\- ](\d{1,2})[/.\- ](\d{4})$/);
+      let chiffres = valeur.replace(/\D/g, '');
+      if (iso) chiffres = iso[3] + iso[2] + iso[1];
+      else if (complete) chiffres = complete[1].padStart(2, '0') + complete[2].padStart(2, '0') + complete[3];
+      const texte = chiffresEnDate(chiffres, !suppression);
+      if (texte === valeur) return;
+
+      // Le curseur reste après le même nombre de chiffres.
+      const chiffresAvant = valeur.slice(0, saisie.selectionStart ?? valeur.length).replace(/\D/g, '').length;
+      let position = 0;
+      for (let vus = 0; position < texte.length && vus < chiffresAvant; position += 1) {
+        if (/\d/.test(texte[position])) vus += 1;
+      }
+      if (iso || complete) position = texte.length;
+      else if (!suppression && texte[position] === '/') position += 1;
+      saisie.value = texte;
+      saisie.setSelectionRange(position, position);
+    });
+  }
+
+  // Dans un montant, un point tapé devient une virgule : « 84.5 » → « 84,5 ».
+  function virgulesDansLesMontants(e) {
+    const saisie = e.target;
+    if (!saisie.matches('[data-saisie-montant]') || !saisie.value.includes('.')) return;
+    const position = saisie.selectionStart;
+    saisie.value = saisie.value.replace(/\./g, ',');
+    saisie.setSelectionRange(position, position);
+  }
+
   // Affiche les erreurs sous les champs concernés et place le curseur sur la première.
   // Renvoie true s'il n'y a aucune erreur.
   function afficherErreurs(formulaire, erreurs) {
     let premier = null;
-    formulaire.querySelectorAll('input[name]').forEach((saisie) => {
+    formulaire.querySelectorAll('input[name], select[name], textarea[name]').forEach((saisie) => {
       const message = erreurs[saisie.name];
       const zone = formulaire.querySelector(`#${saisie.id}-erreur`);
       saisie.setAttribute('aria-invalid', message ? 'true' : 'false');
@@ -145,5 +226,5 @@
     return !premier;
   }
 
-  EV.ui = { icone, remplirIcones, echapper, plaque, toast, fenetre, confirmer, champ, afficherErreurs };
+  EV.ui = { icone, remplirIcones, echapper, plaque, toast, fenetre, confirmer, champ, champDate, afficherErreurs };
 })(window.EV = window.EV || {});

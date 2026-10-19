@@ -1,0 +1,282 @@
+/* Fenêtre « Nouvel événement d'entretien » / « Modifier l'événement ». */
+(function (EV) {
+  'use strict';
+
+  const { ui, format, voitures, categories, evenements } = EV;
+
+  let compteurLignes = 0;
+
+  function optionsCategories(listeCategories, choisie) {
+    return '<option value="">Choisir une catégorie</option>'
+      + listeCategories.map((c) => `<option value="${c.id}"${c.id === choisie ? ' selected' : ''}>${ui.echapper(c.nom)}</option>`).join('');
+  }
+
+  // Un bloc de saisie pour une ligne d'entretien. Chaque bloc a son numéro, qui ne change pas quand on en retire un.
+  function blocLigne(ligne, listeCategories) {
+    const n = ++compteurLignes;
+    const id = (champ) => `ligne-${n}-${champ}`;
+    return `
+      <div class="ligne-entretien" data-ligne data-n="${n}" data-id-ligne="${ligne.id || ''}">
+        <div class="ligne-entretien-entete">
+          <h3 class="ligne-entretien-titre">Entretien</h3>
+          <button type="button" class="bouton bouton-icone" data-retirer-ligne>${ui.icone('fermer', 18)}</button>
+        </div>
+        <div class="ligne-entretien-champs">
+          <div class="champ">
+            <label for="${id('categorie')}">Catégorie</label>
+            <select id="${id('categorie')}" name="${id('categorie')}" aria-describedby="${id('categorie')}-erreur">${optionsCategories(listeCategories, ligne.categorieId)}</select>
+            <p class="champ-erreur" id="${id('categorie')}-erreur" hidden></p>
+          </div>
+          <div class="champ champ-detail">
+            <label for="${id('detail')}">Détail</label>
+            <textarea id="${id('detail')}" name="${id('detail')}" rows="1" placeholder="Ex. : vidange, filtre à huile, filtre à air">${ui.echapper(evenements.texteDetail(ligne))}</textarea>
+          </div>
+          <div class="champ champ-cout-ligne">
+            <label for="${id('cout')}">Coût TTC</label>
+            <input id="${id('cout')}" name="${id('cout')}" value="${format.montantSaisie(ligne.cout)}" data-saisie-montant inputmode="decimal" autocomplete="off" placeholder="Ex. : 270,00" aria-describedby="${id('cout')}-erreur">
+            <p class="champ-erreur" id="${id('cout')}-erreur" hidden></p>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  // Branche les comportements du formulaire : lignes ajoutées ou retirées, choix du mode de coût, total en direct.
+  function preparer(formulaire, listeCategories) {
+    const conteneurLignes = formulaire.querySelector('.lignes-entretien');
+    const blocs = () => [...conteneurLignes.querySelectorAll('[data-ligne]')];
+    const totalAffiche = formulaire.querySelector('.cout-total');
+    const champGlobal = formulaire.elements.coutGlobal;
+
+    function sommeLignes() {
+      const couts = blocs().map((b) => format.lireMontant(b.querySelector('.champ-cout-ligne input').value))
+        .filter((c) => c !== null && !Number.isNaN(c));
+      return couts.length ? couts.reduce((a, b) => a + b, 0) : null;
+    }
+
+    function majTotal() {
+      const detaille = formulaire.dataset.modeCout === 'detail';
+      totalAffiche.hidden = !detaille;
+      if (detaille) totalAffiche.textContent = `Total : ${format.montant(sommeLignes()) || '—'}`;
+    }
+
+    function numeroter() {
+      const tous = blocs();
+      tous.forEach((bloc, rang) => {
+        bloc.querySelector('.ligne-entretien-titre').textContent = `Entretien ${rang + 1}`;
+        const retirer = bloc.querySelector('[data-retirer-ligne]');
+        retirer.hidden = tous.length === 1;
+        retirer.setAttribute('aria-label', `Retirer l'entretien ${rang + 1}`);
+        retirer.title = `Retirer l'entretien ${rang + 1}`;
+      });
+    }
+
+    function definirMode(mode) {
+      const avant = formulaire.dataset.modeCout;
+      if (avant && avant !== mode) {
+        // On reporte le montant déjà saisi pour ne rien avoir à retaper.
+        const lignes = blocs();
+        const global = format.lireMontant(champGlobal.value);
+        const premiereLigne = lignes[0].querySelector('.champ-cout-ligne input');
+        if (mode === 'detail' && lignes.length === 1 && !premiereLigne.value && global !== null && !Number.isNaN(global)) {
+          premiereLigne.value = format.montantSaisie(global);
+        }
+        if (mode === 'global' && !champGlobal.value && sommeLignes() !== null) {
+          champGlobal.value = format.montantSaisie(sommeLignes());
+        }
+      }
+      formulaire.dataset.modeCout = mode;
+      formulaire.querySelectorAll('[data-choix-cout]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.choixCout === mode)));
+      formulaire.querySelector('.cout-global').hidden = mode !== 'global';
+      formulaire.querySelectorAll('.champ-cout-ligne').forEach((champ) => { champ.hidden = mode !== 'detail'; });
+      majTotal();
+    }
+
+    formulaire.querySelector('[data-ajouter-ligne]').addEventListener('click', () => {
+      conteneurLignes.insertAdjacentHTML('beforeend', blocLigne({}, listeCategories));
+      const nouveau = blocs().at(-1);
+      nouveau.querySelector('.champ-cout-ligne').hidden = formulaire.dataset.modeCout !== 'detail';
+      numeroter();
+      nouveau.querySelector('select').focus();
+    });
+
+    conteneurLignes.addEventListener('click', (e) => {
+      const retirer = e.target.closest('[data-retirer-ligne]');
+      if (!retirer) return;
+      retirer.closest('[data-ligne]').remove();
+      numeroter();
+      majTotal();
+      formulaire.querySelector('[data-ajouter-ligne]').focus();
+    });
+
+    // Le détail s'agrandit avec son texte (la bordure n'est pas comptée dans scrollHeight).
+    function ajusterHauteur(zone) {
+      zone.style.height = 'auto';
+      zone.style.height = `${zone.scrollHeight + 2}px`;
+    }
+
+    conteneurLignes.addEventListener('input', (e) => {
+      if (e.target.matches('textarea')) ajusterHauteur(e.target);
+      if (e.target.closest('.champ-cout-ligne')) majTotal();
+    });
+    // Une fois la fenêtre affichée, les détails déjà écrits prennent leur hauteur.
+    requestAnimationFrame(() => conteneurLignes.querySelectorAll('textarea').forEach(ajusterHauteur));
+
+    formulaire.querySelectorAll('[data-choix-cout]').forEach((bouton) => {
+      bouton.addEventListener('click', () => definirMode(bouton.dataset.choixCout));
+    });
+
+    numeroter();
+    definirMode(formulaire.dataset.modeCoutInitial);
+  }
+
+  // Lit le formulaire et renvoie la saisie brute, plus le numéro de chaque bloc de ligne.
+  function lireSaisie(formulaire) {
+    const champs = formulaire.elements;
+    const blocs = [...formulaire.querySelectorAll('[data-ligne]')];
+    const valeur = (bloc, champ) => champs[`ligne-${bloc.dataset.n}-${champ}`].value;
+    return {
+      numeros: blocs.map((bloc) => bloc.dataset.n),
+      saisie: {
+        voitureId: champs.voitureId.value,
+        date: champs.date.value,
+        km: champs.km.value,
+        garage: champs.garage.value, // la « Société »
+        modeCout: formulaire.dataset.modeCout,
+        coutGlobal: champs.coutGlobal.value,
+        lignes: blocs.map((bloc) => ({
+          id: bloc.dataset.idLigne,
+          categorieId: valeur(bloc, 'categorie'),
+          detail: valeur(bloc, 'detail'),
+          cout: valeur(bloc, 'cout')
+        }))
+      }
+    };
+  }
+
+  // Ouvre la fenêtre. Renvoie { action: 'enregistre', evenement }, { action: 'supprime' } ou null si l'utilisateur annule.
+  async function ouvrir({ evenement = null, voitureId = null } = {}) {
+    const [listeVoitures, listeCategories, garages] = await Promise.all([voitures.liste(), categories.liste(), evenements.garages()]);
+    const voitureChoisie = evenement?.voitureId || voitureId || (listeVoitures.length === 1 ? listeVoitures[0].id : '');
+    const valeurs = evenement || { date: format.aujourdhui(), km: null, garage: '', modeCout: 'global', coutGlobal: null, lignes: [{}] };
+    let resultat = null;
+
+    const contenu = `
+      <div class="champs-ligne">
+        <div class="champ">
+          <label for="ev-voiture">Voiture</label>
+          <select id="ev-voiture" name="voitureId" aria-describedby="ev-voiture-erreur"${voitureChoisie ? '' : ' autofocus'}>
+            <option value="">Choisir une voiture</option>
+            ${listeVoitures.map((v) => `<option value="${v.id}"${v.id === voitureChoisie ? ' selected' : ''}>${ui.echapper(v.plaque)} · ${ui.echapper(voitures.nom(v))}</option>`).join('')}
+          </select>
+          <p class="champ-erreur" id="ev-voiture-erreur" hidden></p>
+        </div>
+        ${ui.champDate({
+          id: 'ev-date', nom: 'date', libelle: 'Date', valeur: valeurs.date, aide: 'Laissez vide si elle est inconnue.',
+          attributs: voitureChoisie && !evenement ? 'autofocus' : ''
+        })}
+        ${ui.champ({
+          id: 'ev-km', nom: 'km', libelle: 'Kilométrage', facultatif: true, valeur: format.kmSaisie(valeurs.km),
+          attributs: 'inputmode="numeric" autocomplete="off" placeholder="Ex. : 140 000"'
+        })}
+        ${ui.champ({
+          id: 'ev-garage', nom: 'garage', libelle: 'Société', facultatif: true, valeur: valeurs.garage,
+          attributs: 'list="liste-garages" autocomplete="off" maxlength="60"'
+        })}
+      </div>
+      <datalist id="liste-garages">${garages.map((g) => `<option value="${ui.echapper(g)}"></option>`).join('')}</datalist>
+
+      <fieldset class="bloc">
+        <legend>Entretiens réalisés</legend>
+        <p class="champ-aide">Pour chaque entretien, choisissez une catégorie et/ou décrivez-le.</p>
+        <div class="lignes-entretien">${valeurs.lignes.map((ligne) => blocLigne(ligne, listeCategories)).join('')}</div>
+        <button type="button" class="bouton bouton-secondaire bouton-ajout-ligne" data-ajouter-ligne>${ui.icone('plus', 18)}<span>Ajouter un entretien</span></button>
+      </fieldset>
+
+      <fieldset class="bloc">
+        <legend>Coût</legend>
+        <div class="segments" role="radiogroup" aria-label="Façon de saisir le coût">
+          <button type="button" role="radio" aria-checked="false" data-choix-cout="global">Coût global</button>
+          <button type="button" role="radio" aria-checked="false" data-choix-cout="detail">Coût par entretien</button>
+        </div>
+        <div class="cout-global">
+          ${ui.champ({
+            id: 'ev-cout', nom: 'coutGlobal', libelle: 'Coût total TTC', facultatif: true, valeur: format.montantSaisie(valeurs.coutGlobal),
+            attributs: 'class="saisie-courte" data-saisie-montant inputmode="decimal" autocomplete="off" placeholder="Ex. : 580,00"'
+          })}
+        </div>
+        <p class="cout-total" aria-live="polite" hidden></p>
+      </fieldset>`;
+
+    const dateAffichee = evenement?.date ? `du ${format.date(evenement.date)}` : 'sans date';
+
+    await ui.fenetre({
+      titre: evenement ? "Modifier l'événement" : "Nouvel événement d'entretien",
+      contenu,
+      classe: 'fenetre-evenement',
+      libelleValider: evenement ? 'Enregistrer' : "Ajouter l'événement",
+      preparer: (formulaire) => {
+        formulaire.dataset.modeCoutInitial = valeurs.modeCout;
+        preparer(formulaire, listeCategories);
+      },
+      valider: async (formulaire) => {
+        const { saisie, numeros } = lireSaisie(formulaire);
+        const verification = evenements.verifier(saisie);
+        const erreurs = { ...verification.erreurs };
+        verification.erreursLignes.forEach((erreursLigne, rang) => {
+          if (erreursLigne.categorie) erreurs[`ligne-${numeros[rang]}-categorie`] = erreursLigne.categorie;
+          if (erreursLigne.cout) erreurs[`ligne-${numeros[rang]}-cout`] = erreursLigne.cout;
+        });
+        if (!ui.afficherErreurs(formulaire, erreurs)) return false;
+        resultat = { action: 'enregistre', evenement: await evenements.enregistrer({ ...evenement, ...verification.valeurs }) };
+        return true;
+      },
+      supprimer: evenement && (async () => {
+        const nombre = evenement.lignes.length;
+        const entretiens = nombre > 1 ? `ses ${nombre} entretiens` : 'son entretien';
+        const confirme = await ui.confirmer({
+          titre: 'Supprimer cet événement ?',
+          message: `L'événement ${dateAffichee} et ${entretiens} seront supprimés. Cette action est définitive.`,
+          libelleValider: "Supprimer l'événement"
+        });
+        if (!confirme) return false;
+        await evenements.supprimer(evenement.id);
+        resultat = { action: 'supprime' };
+        return true;
+      })
+    });
+
+    return resultat;
+  }
+
+  // Affiche la fiche de la voiture concernée, en signalant l'événement qui vient d'être enregistré.
+  // Si l'on est déjà sur la fiche de cette voiture (n'importe quel onglet), on y reste.
+  function montrer(voitureId, evenementId = null) {
+    EV.evenementSignale = evenementId;
+    const cible = `voiture/${voitureId}`;
+    const actuelle = location.hash.replace(/^#/, '');
+    if (actuelle === cible || actuelle.startsWith(`${cible}/`)) EV.routeur.afficher();
+    else location.hash = cible;
+  }
+
+  // Bouton « Ajouter » de l'onglet Entretiens : nouvel événement pour la voiture affichée.
+  async function nouveau(voitureId) {
+    const resultat = await ouvrir({ voitureId });
+    if (!resultat) return;
+    ui.toast('Événement enregistré.');
+    montrer(resultat.evenement.voitureId, resultat.evenement.id);
+  }
+
+  async function modifier(evenement) {
+    const resultat = await ouvrir({ evenement });
+    if (!resultat) return;
+    if (resultat.action === 'supprime') {
+      ui.toast('Événement supprimé.');
+      montrer(evenement.voitureId);
+    } else {
+      ui.toast('Modifications enregistrées.');
+      montrer(resultat.evenement.voitureId, resultat.evenement.id);
+    }
+  }
+
+  EV.fenetreEvenement = { nouveau, modifier };
+})(window.EV = window.EV || {});
