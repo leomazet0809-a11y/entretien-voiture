@@ -2,12 +2,11 @@
 
 Application web pour suivre l'entretien de ses voitures : un dossier par voiture, le tableau des entretiens, l'historique du kilométrage et une recherche dans toutes les données.
 
-Un **événement** est un passage (au garage ou chez soi) : une date, un kilométrage, une société, des documents, et un ou plusieurs **entretiens** (catégorie, détail). Le coût se saisit globalement ou entretien par entretien.
+Un **événement** est un passage (au garage ou chez soi) : une date, un kilométrage, une société, et un ou plusieurs **entretiens** (catégorie, détail). Le coût se saisit globalement ou entretien par entretien.
 
 Elle fonctionne sur ordinateur et sur smartphone. On s'y connecte avec un compte Google : les données sont enregistrées en ligne dans un espace propre à chaque compte, et sont donc les mêmes sur tous les appareils, mises à jour en temps réel.
 
 - Les fiches (voitures, catégories, événements, relevés) sont dans **Cloud Firestore**. Une copie reste sur l'appareil : l'application fonctionne sans réseau et envoie les modifications au retour de la connexion.
-- Les documents joints (factures, photos) sont dans **Firebase Storage**. Leur envoi demande une connexion.
 
 ## Ouvrir l'application
 
@@ -28,7 +27,7 @@ Elle fonctionne sur ordinateur et sur smartphone. On s'y connecte avec un compte
 | 2 | Voitures : créer, modifier, supprimer | Fait |
 | 3 | Paramètres : catégories d'entretien | Fait |
 | 4 | Événements d'entretien et tableur de la voiture | Fait |
-| 5 | Documents joints (factures, photos) | Fait |
+| 5 | Documents joints (factures, photos) | Retiré à la demande (Firebase Storage n'est plus utilisé) |
 | 6 | Kilométrage : bouton Km, historique, courbe | Fait |
 | 7 | Recherche dans toutes les données | Fait |
 | 8 | Exporter / importer les entretiens d'une voiture (fichier CSV) | Fait |
@@ -50,11 +49,10 @@ js/theme.js           bascule clair / sombre
 js/routeur.js         navigation entre les écrans
 js/firebase-config.js identifiants publics du projet Firebase
 js/compte.js          connexion et déconnexion avec Google
-js/stockage.js        enregistrement en ligne : Cloud Firestore (fiches) et Firebase Storage (fichiers)
+js/stockage.js        enregistrement en ligne dans Cloud Firestore
 js/voitures.js        règles sur les voitures (format de plaque, vérifications)
 js/categories.js      règles sur les catégories d'entretien
 js/evenements.js      règles sur les événements (vérifications, total des coûts, tri)
-js/documents.js       documents joints : vérification, ouverture, téléchargement
 js/kilometrage.js     relevés kilométriques : vérifications, chiffres clés
 js/graphique.js       courbe du kilométrage (SVG, sans bibliothèque)
 js/recherche.js       recherche dans toutes les données (accents et majuscules ignorés)
@@ -72,8 +70,7 @@ Aucun outil à installer : HTML, CSS et JavaScript simples, sans compilation. Fi
 Le service worker (`sw.js`) garde une copie de l'application sur l'appareil :
 - les fichiers de l'application sont pris sur le réseau quand il répond : une nouvelle version publiée est donc prise au rechargement suivant ;
 - sans réseau, ou si le réseau tarde plus de 4 secondes, c'est la copie de l'appareil qui sert ;
-- les données ont leur propre copie hors ligne (Firestore) : ce qui est saisi sans réseau est envoyé au retour de la connexion ;
-- l'envoi de nouveaux documents, lui, demande une connexion.
+- les données ont leur propre copie hors ligne (Firestore) : ce qui est saisi sans réseau est envoyé au retour de la connexion.
 
 Un fichier ajouté à l'application doit aussi être ajouté à la liste `FICHIERS` de `sw.js`.
 
@@ -90,7 +87,6 @@ Règles de l'import :
 - un coût écrit seulement sur la première ligne d'un événement est son coût global ; sinon, chaque ligne a son coût ;
 - une catégorie inconnue est créée ;
 - les colonnes de l'ancien tableur sont reconnues (`Élément`, `Observation`, `Garage`, `Prix`…) : l'observation est ajoutée au détail ;
-- les documents joints restent rattachés à leur événement s'il est encore dans le fichier (même date, kilométrage et société) ; sinon ils sont supprimés, et le résumé le signale avant de confirmer ;
 - les relevés notés avec le bouton Km ne changent pas.
 
 ## Configuration Firebase
@@ -99,6 +95,7 @@ Projet Firebase : `entretien-voiture-67366`. Ses identifiants publics sont dans 
 
 1. **Authentication** : fournisseur Google activé ; domaine `leomazet0809-a11y.github.io` dans *Paramètres → Domaines autorisés*.
 2. **Firestore Database** : coller le contenu de [`firestore.rules`](firestore.rules) dans l'onglet *Règles*, puis *Publier*.
-3. **Storage** (documents joints) : demande le forfait **Blaze** (paiement à l'usage ; pour quelques centaines de factures, quelques centimes par mois au plus). Créer le stockage dans *Storage → Commencer*, puis coller [`storage.rules`](storage.rules) dans l'onglet *Règles* et *Publier*. Penser à une alerte de budget dans Google Cloud (*Facturation → Budgets et alertes*).
 
-Chaque compte ne peut lire et modifier que son propre espace (`users/{uid}/…`), et seuls les PDF et images de 25 Mo au plus sont acceptés dans Storage.
+Le forfait gratuit **Spark** suffit : l'application n'utilise que l'authentification et Firestore, dont les quotas gratuits (1 Go de données, 50 000 lectures et 20 000 écritures par jour) dépassent largement un usage personnel. Firebase Storage n'est pas utilisé.
+
+Chaque compte ne peut lire et modifier que son propre espace (`users/{uid}/…`).

@@ -1,5 +1,5 @@
 /* Champ « Rechercher » (onglet Entretiens de la fiche voiture) et son panneau de résultats.
-   La recherche porte sur toutes les données : toutes les voitures, entretiens, documents et relevés. */
+   La recherche porte sur toutes les données : toutes les voitures, entretiens et relevés. */
 (function (EV) {
   'use strict';
 
@@ -38,7 +38,7 @@
   }
 
   function rendre(trouve, requete) {
-    const { mots, resultats, total, voituresParId, evenementsParId, nomsCategories } = trouve;
+    const { mots, resultats, total, voituresParId, nomsCategories } = trouve;
     if (total === 0) {
       return `<p class="resultats-vide">Aucun résultat pour « ${ui.echapper(requete.trim())} ». Essayez une plaque, une société, une pièce ou une date.</p>`;
     }
@@ -53,8 +53,6 @@
         s(libelleEvenement(ev)),
         s(extrait(ev.lignes.map((l) => [nomsCategories[l.categorieId], l.detail, l.commentaire].filter(Boolean).join(' — ')).join(' / '), 160)),
         voituresParId[ev.voitureId].plaque))}
-      ${groupe('Documents', resultats.documents, (d) => element('document', d.id,
-        s(d.nom), s(`Événement : ${libelleEvenement(evenementsParId[d.evenementId])}`), voituresParId[d.voitureId].plaque, 'document'))}
       ${groupe('Kilométrage', resultats.releves, (r) => element('releve', r.id,
         s(`${format.date(r.date)} · ${format.km(r.km)}`), 'Relevé kilométrique', voituresParId[r.voitureId].plaque, 'compteur'))}`;
   }
@@ -122,8 +120,6 @@
         const cible = `voiture/${ev.voitureId}`;
         if (location.hash.replace(/^#/, '') === cible) EV.routeur.afficher();
         else location.hash = cible;
-      } else if (type === 'document') {
-        EV.documents.ouvrir(resultats.documents.find((d) => d.id === id));
       } else if (type === 'releve') {
         location.hash = `voiture/${resultats.releves.find((r) => r.id === id).voitureId}/km`;
       }

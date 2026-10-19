@@ -129,85 +129,6 @@
     definirMode(formulaire.dataset.modeCoutInitial);
   }
 
-  // Documents : la liste à l'écran reflète `etat` ; rien n'est enregistré avant le clic sur « Enregistrer ».
-  // etat = { existants: documents déjà enregistrés, nouveaux: documents ajoutés, supprimes: identifiants retirés }.
-  let compteurNouveaux = 0;
-  function preparerDocuments(formulaire, etat, urls) {
-    const liste = formulaire.querySelector('.liste-documents');
-    const erreur = formulaire.querySelector('[data-erreur-documents]');
-    const bloc = formulaire.querySelector('.bloc-documents');
-    const visibles = () => [...etat.existants.filter((d) => !etat.supprimes.has(d.id)), ...etat.nouveaux];
-
-    function afficher() {
-      const documents = visibles();
-      liste.innerHTML = documents.length
-        ? documents.map((d) => EV.documents.element(d, urls, { retirer: true })).join('')
-        : '<li class="documents-vide">Aucun document joint.</li>';
-    }
-
-    function ajouter(fichiers) {
-      const { acceptes, refus } = EV.documents.preparer(fichiers);
-      acceptes.forEach((document) => etat.nouveaux.push({ ...document, id: `nouveau-${++compteurNouveaux}` }));
-      erreur.hidden = refus.length === 0;
-      erreur.textContent = refus.join(' ');
-      afficher();
-    }
-
-    formulaire.querySelectorAll('[data-joindre]').forEach((choix) => {
-      choix.addEventListener('change', () => {
-        ajouter(choix.files);
-        choix.value = '';
-      });
-    });
-
-    liste.addEventListener('click', (e) => {
-      const ligne = e.target.closest('.document');
-      if (!ligne) return;
-      const document = visibles().find((d) => d.id === ligne.dataset.document);
-      if (e.target.closest('[data-retirer-document]')) {
-        if (etat.nouveaux.includes(document)) etat.nouveaux.splice(etat.nouveaux.indexOf(document), 1);
-        else etat.supprimes.add(document.id);
-        afficher();
-      } else if (e.target.closest('[data-ouvrir-document]')) {
-        EV.documents.ouvrir(document);
-      }
-    });
-
-    // Sur ordinateur : on peut déposer des fichiers n'importe où sur la fenêtre.
-    formulaire.addEventListener('dragover', (e) => {
-      if (![...e.dataTransfer.types].includes('Files')) return;
-      e.preventDefault();
-      bloc.classList.add('depot-actif');
-    });
-    formulaire.addEventListener('dragleave', (e) => {
-      if (!formulaire.contains(e.relatedTarget)) bloc.classList.remove('depot-actif');
-    });
-    formulaire.addEventListener('drop', (e) => {
-      if (!e.dataTransfer.files.length) return;
-      e.preventDefault();
-      bloc.classList.remove('depot-actif');
-      ajouter(e.dataTransfer.files);
-    });
-
-    afficher();
-  }
-
-  // Message clair quand l'envoi des documents vers Firebase Storage échoue. Rien n'est alors enregistré.
-  function messageEnvoi(erreur) {
-    switch (erreur && erreur.code) {
-      case 'hors-ligne':
-      case 'storage/retry-limit-exceeded':
-        return "Pas de connexion Internet : les documents n'ont pas pu être envoyés. Rien n'a été enregistré. Réessayez une fois connecté, ou retirez les nouveaux documents pour enregistrer le reste.";
-      case 'storage/unauthorized':
-      case 'storage/unauthenticated':
-        return "Firebase Storage a refusé l'envoi. Vérifiez que Storage est activé et que ses règles de sécurité sont en place (voir le README). Rien n'a été enregistré.";
-      case 'storage/quota-exceeded':
-        return "L'espace de stockage des documents est plein ou le forfait Firebase ne permet pas l'envoi. Rien n'a été enregistré.";
-      default:
-        return "Les documents n'ont pas pu être envoyés. Rien n'a été enregistré : réessayez.";
-    }
-  }
-
   // Lit le formulaire et renvoie la saisie brute, plus le numéro de chaque bloc de ligne.
   function lireSaisie(formulaire) {
     const champs = formulaire.elements;
@@ -234,14 +155,9 @@
 
   // Ouvre la fenêtre. Renvoie { action: 'enregistre', evenement }, { action: 'supprime' } ou null si l'utilisateur annule.
   async function ouvrir({ evenement = null, voitureId = null } = {}) {
-    const [listeVoitures, listeCategories, garages, documentsExistants] = await Promise.all([
-      voitures.liste(), categories.liste(), evenements.garages(),
-      evenement ? evenements.documents(evenement.id) : []
-    ]);
+    const [listeVoitures, listeCategories, garages] = await Promise.all([voitures.liste(), categories.liste(), evenements.garages()]);
     const voitureChoisie = evenement?.voitureId || voitureId || (listeVoitures.length === 1 ? listeVoitures[0].id : '');
     const valeurs = evenement || { date: format.aujourdhui(), km: null, garage: '', modeCout: 'global', coutGlobal: null, lignes: [{}] };
-    const etatDocuments = { existants: documentsExistants, nouveaux: [], supprimes: new Set() };
-    const urls = EV.documents.adresses();
     let resultat = null;
 
     const contenu = `
@@ -289,28 +205,9 @@
           })}
         </div>
         <p class="cout-total" aria-live="polite" hidden></p>
-      </fieldset>
-
-      <fieldset class="bloc bloc-documents">
-        <legend>Documents</legend>
-        <p class="champ-aide">Factures, devis, photos : PDF ou images, 25 Mo maximum par fichier.</p>
-        <ul class="liste-documents" aria-live="polite"></ul>
-        <div class="documents-actions">
-          <label class="bouton bouton-secondaire">
-            ${ui.icone('trombone', 18)}<span>Joindre des fichiers</span>
-            <input type="file" class="masque" multiple accept="application/pdf,image/*" data-joindre>
-          </label>
-          <label class="bouton bouton-secondaire bouton-photo">
-            ${ui.icone('photo', 18)}<span>Prendre une photo</span>
-            <input type="file" class="masque" accept="image/*" capture="environment" data-joindre>
-          </label>
-        </div>
-        <p class="envoi-documents" data-envoi-documents aria-live="polite" hidden></p>
-        <p class="champ-erreur" data-erreur-documents role="alert" hidden></p>
       </fieldset>`;
 
     const dateAffichee = evenement?.date ? `du ${format.date(evenement.date)}` : 'sans date';
-    const nombreDocuments = documentsExistants.length;
 
     await ui.fenetre({
       titre: evenement ? "Modifier l'événement" : "Nouvel événement d'entretien",
@@ -320,7 +217,6 @@
       preparer: (formulaire) => {
         formulaire.dataset.modeCoutInitial = valeurs.modeCout;
         preparer(formulaire, listeCategories);
-        preparerDocuments(formulaire, etatDocuments, urls);
       },
       valider: async (formulaire) => {
         const { saisie, numeros } = lireSaisie(formulaire);
@@ -331,47 +227,15 @@
           if (erreursLigne.cout) erreurs[`ligne-${numeros[rang]}-cout`] = erreursLigne.cout;
         });
         if (!ui.afficherErreurs(formulaire, erreurs)) return false;
-
-        // Les nouveaux documents partent vers Firebase Storage avant l'enregistrement de l'événement.
-        const ajouts = etatDocuments.nouveaux.map(({ nom, type, taille, contenu }) => ({ nom, type, taille, contenu }));
-        const zoneErreur = formulaire.querySelector('[data-erreur-documents]');
-        const zoneEnvoi = formulaire.querySelector('[data-envoi-documents]');
-        zoneErreur.hidden = true;
-        if (ajouts.length && !navigator.onLine) {
-          zoneErreur.textContent = messageEnvoi({ code: 'hors-ligne' });
-          zoneErreur.hidden = false;
-          zoneErreur.scrollIntoView({ block: 'nearest' });
-          return false;
-        }
-        try {
-          if (ajouts.length) {
-            zoneEnvoi.textContent = 'Envoi des documents…';
-            zoneEnvoi.hidden = false;
-          }
-          const enregistre = await evenements.enregistrer({ ...evenement, ...verification.valeurs }, {
-            ajouts,
-            suppressions: [...etatDocuments.supprimes],
-            progression: (fraction) => { zoneEnvoi.textContent = `Envoi des documents… ${Math.round(fraction * 100)} %`; }
-          });
-          resultat = { action: 'enregistre', evenement: enregistre };
-          return true;
-        } catch (erreur) {
-          console.error(erreur);
-          zoneErreur.textContent = messageEnvoi(erreur);
-          zoneErreur.hidden = false;
-          zoneErreur.scrollIntoView({ block: 'nearest' });
-          return false;
-        } finally {
-          zoneEnvoi.hidden = true;
-        }
+        resultat = { action: 'enregistre', evenement: await evenements.enregistrer({ ...evenement, ...verification.valeurs }) };
+        return true;
       },
       supprimer: evenement && (async () => {
         const nombre = evenement.lignes.length;
         const entretiens = nombre > 1 ? `ses ${nombre} entretiens` : 'son entretien';
-        const documents = nombreDocuments > 1 ? `, avec ses ${nombreDocuments} documents joints` : nombreDocuments === 1 ? ', avec son document joint' : '';
         const confirme = await ui.confirmer({
           titre: 'Supprimer cet événement ?',
-          message: `L'événement ${dateAffichee} et ${entretiens} seront supprimés${documents}. Cette action est définitive.`,
+          message: `L'événement ${dateAffichee} et ${entretiens} seront supprimés. Cette action est définitive.`,
           libelleValider: "Supprimer l'événement"
         });
         if (!confirme) return false;
@@ -381,7 +245,6 @@
       })
     });
 
-    urls.liberer();
     return resultat;
   }
 

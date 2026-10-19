@@ -68,12 +68,5 @@
     return `${nombre} ${mot}${nombre > 1 ? 's' : ''}`;
   }
 
-  // 250 880 octets → « 245 Ko » ; 3 355 443 → « 3,2 Mo ».
-  function taille(octets) {
-    if (octets < 1024) return `${octets} octets`;
-    if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} Ko`;
-    return `${new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 }).format(octets / (1024 * 1024))} Mo`;
-  }
-
-  EV.format = { lireMontant, lireKm, lireDate, montant, montantSaisie, km, kmSaisie, date, aujourdhui, pluriel, taille };
+  EV.format = { lireMontant, lireKm, lireDate, montant, montantSaisie, km, kmSaisie, date, aujourdhui, pluriel };
 })(window.EV = window.EV || {});

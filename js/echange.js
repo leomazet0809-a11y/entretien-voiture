@@ -144,38 +144,19 @@
     erreurs.sort((a, b) => Number(a.match(/\d+/)[0]) - Number(b.match(/\d+/)[0]));
     if (!erreurs.length && !lus.length) erreurs.push('Le fichier ne contient aucun entretien.');
 
-    // Les documents joints restent rattachés à leur événement s'il est encore dans le fichier.
-    const actuels = await evenements.parVoiture(voiture.id);
-    const actuelsParId = new Map(actuels.map((ev) => [ev.id, ev]));
-    const lusParCle = new Map(lus.map((ev) => [cle(ev), ev]));
-    const rattachements = {};
-    const documentsSupprimes = [];
-    (await stockage.parVoiture('documents', voiture.id)).forEach((document) => {
-      const ancien = actuelsParId.get(document.evenementId);
-      const nouveau = ancien && lusParCle.get(cle(ancien));
-      if (nouveau) rattachements[document.id] = nouveau.id;
-      else documentsSupprimes.push(document);
-    });
-
     return {
       erreurs,
       evenements: lus,
       nombreEntretiens: lus.reduce((somme, ev) => somme + ev.lignes.length, 0),
-      evenementsActuels: actuels.length,
+      evenementsActuels: (await evenements.parVoiture(voiture.id)).length,
       nouvellesCategories,
-      colonnesIgnorees,
-      rattachements,
-      documentsGardes: Object.keys(rattachements).length,
-      documentsSupprimes
+      colonnesIgnorees
     };
   }
 
   // Remplace les entretiens de la voiture par ceux du fichier analysé.
   function importer(voiture, analyse) {
-    return stockage.remplacerEvenements(voiture.id, analyse.evenements, {
-      categories: analyse.nouvellesCategories,
-      rattachements: analyse.rattachements
-    });
+    return stockage.remplacerEvenements(voiture.id, analyse.evenements, { categories: analyse.nouvellesCategories });
   }
 
   EV.echange = { COLONNES, nomFichier, versCsv, analyser, importer };

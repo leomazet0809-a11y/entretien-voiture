@@ -46,13 +46,6 @@
     if (analyse.evenementsActuels) {
       points.push(`${analyse.evenementsActuels > 1 ? `Les ${analyse.evenementsActuels} événements actuels` : "L'événement actuel"} de la ${nomVoiture} ${analyse.evenementsActuels > 1 ? 'seront remplacés' : 'sera remplacé'}.`);
     }
-    if (analyse.documentsGardes) {
-      points.push(`${analyse.documentsGardes > 1 ? `${analyse.documentsGardes} documents joints restent rattachés à leur événement` : '1 document joint reste rattaché à son événement'} (même date, même kilométrage, même société).`);
-    }
-    const supprimes = analyse.documentsSupprimes;
-    if (supprimes.length) {
-      points.push(`${supprimes.length > 1 ? `${supprimes.length} documents joints seront supprimés, car leur événement n'est` : '1 document joint sera supprimé, car son événement n\'est'} plus dans le fichier : ${quelquesNoms(supprimes.map((d) => d.nom))}.`);
-    }
     if (analyse.nouvellesCategories.length) {
       points.push(`Nouvelles catégories créées : ${quelquesNoms(analyse.nouvellesCategories.map((c) => c.nom))}.`);
     }

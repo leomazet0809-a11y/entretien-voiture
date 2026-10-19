@@ -1,14 +1,14 @@
-/* Stockage des données en ligne : Cloud Firestore pour les fiches, Firebase Storage pour les fichiers joints.
+/* Stockage des données en ligne, dans Cloud Firestore.
    Chaque compte a son propre espace : users/{uid}/voitures, users/{uid}/evenements…
    Les tables sont écoutées en temps réel et gardées en mémoire : les écrans les lisent sans attendre le réseau
    (et sans consommer de lectures Firestore), et une modification faite sur un autre appareil apparaît d'elle-même.
    Firestore garde aussi une copie sur l'appareil : l'application reste utilisable sans réseau
-   (sauf pour envoyer de nouveaux documents) et envoie les modifications dès que la connexion revient. */
+   et envoie les modifications dès que la connexion revient. */
 (function (EV) {
   'use strict';
 
-  // Un événement (un passage : date, km, société, documents) contient ses lignes d'entretien.
-  const TABLES = ['voitures', 'categories', 'evenements', 'documents', 'releves'];
+  // Un événement (un passage : date, km, société) contient ses lignes d'entretien.
+  const TABLES = ['voitures', 'categories', 'evenements', 'releves'];
   const TAILLE_LOT = 400; // Firestore accepte 500 écritures par lot
 
   // Catégories créées une seule fois par compte ; l'utilisateur les modifie ensuite à sa guise.
@@ -16,7 +16,6 @@
     'Distribution', 'Climatisation', 'Filtres', 'Moteur', 'Batterie / électricité', 'Carrosserie / vitrage', 'Divers'];
 
   let db = null;
-  let fichiers = null;      // Firebase Storage
   let uid = null;
   let espace = null;        // document users/{uid}
   const donnees = {};       // nom de table → Map(id → objet), tenue à jour par l'écoute en temps réel
@@ -176,8 +175,6 @@
       // Navigation privée ou navigateur ancien : tout fonctionne, mais sans copie hors ligne.
       console.warn('Copie hors ligne indisponible :', e.code || e);
     }
-    fichiers = firebase.storage();
-    if (emulateurs) fichiers.useEmulator(emulateurs.storage.hote, emulateurs.storage.port);
 
     espace = db.collection('users').doc(uid);
     await Promise.all(TABLES.map(ecouter));
@@ -200,10 +197,6 @@
     return (await tous(nom)).filter((o) => o.voitureId === voitureId);
   }
 
-  async function documentsDeLEvenement(evenementId) {
-    return (await tous('documents')).filter((d) => d.evenementId === evenementId);
-  }
-
   /* ---------- Écriture ---------- */
 
   // Ajoute ou met à jour un objet.
@@ -221,100 +214,32 @@
     lot.envoyer().catch(signalerEchec);
   }
 
-  /* ---------- Fichiers joints (Firebase Storage) ---------- */
-
-  function cheminFichier(id) {
-    return `users/${uid}/documents/${id}`;
-  }
-
-  // Envoie les fichiers un par un ; renvoie les fiches des documents, avec l'adresse pour les ouvrir.
-  // `progression(fraction)` suit l'envoi. En cas d'échec, les fichiers déjà envoyés sont retirés.
-  async function envoyerFichiers(ajouts, evenement, progression) {
-    const total = ajouts.reduce((somme, f) => somme + f.taille, 0) || 1;
-    const envoyes = ajouts.map(() => 0);
-    const fiches = [];
-    try {
-      for (const [rang, fichier] of ajouts.entries()) {
-        const id = nouvelId();
-        const chemin = cheminFichier(id);
-        const reference = fichiers.ref(chemin);
-        const envoi = reference.put(fichier.contenu, {
-          contentType: fichier.type,
-          contentDisposition: `inline; filename*=UTF-8''${encodeURIComponent(fichier.nom)}`
-        });
-        envoi.on('state_changed', (etat) => {
-          envoyes[rang] = etat.bytesTransferred;
-          if (progression) progression(envoyes.reduce((a, b) => a + b, 0) / total);
-        });
-        await envoi;
-        fiches.push(horodater({
-          id,
-          evenementId: evenement.id,
-          voitureId: evenement.voitureId,
-          nom: fichier.nom,
-          type: fichier.type,
-          taille: fichier.taille,
-          chemin,
-          url: await reference.getDownloadURL()
-        }));
-      }
-    } catch (erreur) {
-      fiches.forEach((fiche) => fichiers.ref(fiche.chemin).delete().catch(() => {}));
-      throw erreur;
-    }
-    return fiches;
-  }
-
-  function supprimerFichiers(documents) {
-    documents.forEach((document) => {
-      if (!document.chemin) return;
-      fichiers.ref(document.chemin).delete().catch((erreur) => {
-        if (erreur.code !== 'storage/object-not-found') console.warn("Un fichier n'a pas pu être supprimé :", erreur);
-      });
-    });
-  }
-
   /* ---------- Événements, voitures : écritures groupées ---------- */
 
-  // Enregistre un événement, ses documents et son relevé kilométrique.
-  // Les nouveaux fichiers partent d'abord : sans réseau, rien n'est enregistré et l'utilisateur peut réessayer.
-  // `ajouts` : documents à joindre ({ nom, type, taille, contenu }) ; `suppressions` : identifiants à retirer.
-  async function enregistrerEvenement(evenement, { ajouts = [], suppressions = [], progression } = {}) {
+  // Enregistre un événement et son relevé kilométrique.
+  async function enregistrerEvenement(evenement) {
     const complet = horodater(evenement);
-    const nouveaux = ajouts.length ? await envoyerFichiers(ajouts, complet, progression) : [];
-    const retires = suppressions.map((id) => donnees.documents.get(id)).filter(Boolean);
-
     const lot = nouveauLot();
     lot.ecrire('evenements', complet);
     // Le relevé suit l'événement : créé, mis à jour, ou retiré si la date ou le kilométrage manque.
     const releve = releveDeLEvenement(complet);
     if (releve) lot.ecrire('releves', releve);
     else if (donnees.releves.has(idReleveDeLEvenement(complet.id))) lot.effacer('releves', idReleveDeLEvenement(complet.id));
-    // Si l'événement change de voiture, ses documents le suivent.
-    [...donnees.documents.values()]
-      .filter((d) => d.evenementId === complet.id && d.voitureId !== complet.voitureId && !suppressions.includes(d.id))
-      .forEach((d) => lot.ecrire('documents', { ...d, voitureId: complet.voitureId }));
-    nouveaux.forEach((d) => lot.ecrire('documents', d));
-    retires.forEach((d) => lot.effacer('documents', d.id));
-    // Les fichiers retirés ne disparaissent qu'une fois les fiches mises à jour.
-    lot.envoyer().then(() => supprimerFichiers(retires)).catch(signalerEchec);
+    lot.envoyer().catch(signalerEchec);
     return complet;
   }
 
-  // Supprime un événement, ses documents et son relevé kilométrique.
+  // Supprime un événement et son relevé kilométrique.
   async function supprimerEvenement(id) {
-    const documents = [...donnees.documents.values()].filter((d) => d.evenementId === id);
     const lot = nouveauLot();
     lot.effacer('evenements', id);
     if (donnees.releves.has(idReleveDeLEvenement(id))) lot.effacer('releves', idReleveDeLEvenement(id));
-    documents.forEach((d) => lot.effacer('documents', d.id));
-    lot.envoyer().then(() => supprimerFichiers(documents)).catch(signalerEchec);
+    lot.envoyer().catch(signalerEchec);
   }
 
   // Remplace tous les événements d'une voiture (import d'un fichier CSV), avec leurs relevés kilométriques.
-  // `categories` : catégories nouvelles à créer. `rattachements` : { idDocument: idNouvelEvenement } pour les
-  // documents qui restent ; les autres documents de la voiture sont supprimés. Les relevés notés à la main restent.
-  async function remplacerEvenements(voitureId, evenements, { categories = [], rattachements = {} } = {}) {
+  // `categories` : catégories nouvelles à créer. Les relevés notés à la main restent.
+  async function remplacerEvenements(voitureId, evenements, { categories = [] } = {}) {
     const lot = nouveauLot();
     categories.forEach((categorie) => lot.ecrire('categories', horodater(categorie)));
     [...donnees.evenements.values()].filter((e) => e.voitureId === voitureId).forEach((e) => {
@@ -326,26 +251,17 @@
       const releve = releveDeLEvenement(evenement);
       if (releve) lot.ecrire('releves', releve);
     });
-    const retires = [];
-    [...donnees.documents.values()].filter((d) => d.voitureId === voitureId).forEach((d) => {
-      if (rattachements[d.id]) lot.ecrire('documents', horodater({ ...d, evenementId: rattachements[d.id] }));
-      else {
-        lot.effacer('documents', d.id);
-        retires.push(d);
-      }
-    });
-    lot.envoyer().then(() => supprimerFichiers(retires)).catch(signalerEchec);
+    lot.envoyer().catch(signalerEchec);
   }
 
   // Supprime une voiture et tout ce qui lui est rattaché.
   async function supprimerVoiture(id) {
-    const documents = [...donnees.documents.values()].filter((d) => d.voitureId === id);
     const lot = nouveauLot();
     lot.effacer('voitures', id);
-    ['evenements', 'releves', 'documents'].forEach((nom) => {
+    ['evenements', 'releves'].forEach((nom) => {
       [...donnees[nom].values()].filter((o) => o.voitureId === id).forEach((o) => lot.effacer(nom, o.id));
     });
-    lot.envoyer().then(() => supprimerFichiers(documents)).catch(signalerEchec);
+    lot.envoyer().catch(signalerEchec);
   }
 
   // Avant la déconnexion : envoie ce qui reste en attente, puis efface la copie gardée sur l'appareil.
@@ -363,6 +279,6 @@
 
   EV.stockage = {
     demarrer, nouvelId, tous, lire, parVoiture, enregistrer, supprimer,
-    supprimerVoiture, documentsDeLEvenement, enregistrerEvenement, supprimerEvenement, remplacerEvenements, arreter
+    supprimerVoiture, enregistrerEvenement, supprimerEvenement, remplacerEvenements, arreter
   };
 })(window.EV = window.EV || {});

@@ -26,7 +26,7 @@
     const nom = voitures.nom(voiture);
     const confirme = await ui.confirmer({
       titre: 'Supprimer cette voiture ?',
-      message: `Le dossier de la ${nom} (${voiture.plaque}) sera supprimé avec tous ses entretiens, documents et relevés kilométriques. Cette action est définitive.`,
+      message: `Le dossier de la ${nom} (${voiture.plaque}) sera supprimé avec tous ses entretiens et relevés kilométriques. Cette action est définitive.`,
       libelleValider: 'Supprimer la voiture'
     });
     if (!confirme) return;
@@ -39,11 +39,8 @@
 
   // Un événement = un groupe de lignes. Date, km et société ne sont écrits que sur la première.
   // Coût : sur la ligne s'il n'y a qu'un entretien ; sinon par ligne (coût détaillé) puis une ligne de total.
-  function groupe(evenement, nomsCategories, documents = []) {
+  function groupe(evenement, nomsCategories) {
     const plusieurs = evenement.lignes.length > 1;
-    const boutonDocuments = documents.length
-      ? `<button type="button" class="bouton-documents" data-documents aria-label="${documents.length > 1 ? `Voir les ${documents.length} documents` : 'Ouvrir le document'}" title="${documents.length > 1 ? 'Voir les documents' : 'Ouvrir le document'}">${ui.icone('trombone', 16)}<span>${documents.length}</span></button>`
-      : '';
     const total = evenements.total(evenement);
     const libelleDate = evenement.date ? format.date(evenement.date) : 'Date inconnue';
 
@@ -60,7 +57,6 @@
           <td class="col-categorie">${categorie ? `<span class="etiquette-categorie">${ui.echapper(categorie)}</span>` : '<span class="inconnu">—</span>'}</td>
           <td class="col-detail">${ui.echapper(evenements.texteDetail(ligne))}</td>
           <td class="col-cout">${cout}</td>
-          <td class="col-docs">${premiere ? boutonDocuments : ''}</td>
         </tr>`;
     }).join('');
 
@@ -69,7 +65,6 @@
           <td class="col-date"></td>
           <td colspan="4" class="total-libelle">Total de l'événement</td>
           <td class="col-cout">${format.montant(total) || '—'}</td>
-          <td class="col-docs"></td>
         </tr>` : '';
 
     const signale = EV.evenementSignale === evenement.id ? ' groupe-signale' : '';
@@ -106,7 +101,7 @@
       </div>`;
   }
 
-  function tableur(liste, nomsCategories, documents) {
+  function tableur(liste, nomsCategories) {
     return `
       <div class="tableur-zone" role="region" aria-labelledby="titre-tableur" tabindex="0">
         <table class="tableur">
@@ -118,10 +113,9 @@
               <th class="col-categorie" scope="col">Catégorie</th>
               <th class="col-detail" scope="col">Détail</th>
               <th class="col-cout" scope="col">Coût</th>
-              <th class="col-docs" scope="col"><span class="masque">Documents</span>${ui.icone('trombone', 16)}</th>
             </tr>
           </thead>
-          ${liste.map((ev) => groupe(ev, nomsCategories, documents[ev.id])).join('')}
+          ${liste.map((ev) => groupe(ev, nomsCategories)).join('')}
         </table>
       </div>`;
   }
@@ -263,9 +257,8 @@
       zone.innerHTML = introuvable();
       return;
     }
-    const [liste, listeCategories, documents, nombreReleves] = await Promise.all([
-      evenements.parVoiture(voiture.id), categories.liste(), evenements.documentsParEvenement(voiture.id),
-      EV.kilometrage.historique(voiture.id).then((h) => h.length)
+    const [liste, listeCategories, nombreReleves] = await Promise.all([
+      evenements.parVoiture(voiture.id), categories.liste(), EV.kilometrage.historique(voiture.id).then((h) => h.length)
     ]);
     const nomsCategories = Object.fromEntries(listeCategories.map((c) => [c.id, c.nom]));
     const ongletKm = onglet === 'km';
@@ -298,7 +291,7 @@
       </nav>
 
       <div data-onglet-contenu>
-        ${ongletKm ? '' : enteteEntretiens(liste) + (liste.length ? tableur(liste, nomsCategories, documents) : aucunEntretien())}
+        ${ongletKm ? '' : enteteEntretiens(liste) + (liste.length ? tableur(liste, nomsCategories) : aucunEntretien())}
       </div>`;
 
     zone.querySelector('[data-modifier]').addEventListener('click', () => modifierVoiture(voiture));
@@ -319,14 +312,7 @@
     // Un clic n'importe où sur un événement l'ouvre ; au clavier, le bouton de la date fait de même.
     zone.querySelectorAll('tbody.groupe').forEach((corps) => {
       const evenement = liste.find((ev) => ev.id === corps.dataset.evenement);
-      corps.addEventListener('click', (e) => {
-        if (e.target.closest('[data-documents]')) {
-          const titre = evenement.date ? `Documents du ${format.date(evenement.date)}` : 'Documents';
-          EV.documents.montrer(titre, documents[evenement.id]);
-          return;
-        }
-        EV.fenetreEvenement.modifier(evenement);
-      });
+      corps.addEventListener('click', () => EV.fenetreEvenement.modifier(evenement));
     });
 
     // Fait défiler jusqu'à l'événement qui vient d'être enregistré, une fois l'écran affiché.

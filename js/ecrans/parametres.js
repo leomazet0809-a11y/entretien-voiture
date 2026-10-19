@@ -165,7 +165,7 @@
           <div class="ligne-reglage">
             <div class="reglage-texte">
               <h2 id="titre-sauvegarde">Sauvegarde</h2>
-              <p>Les entretiens de chaque voiture s'exportent et s'importent en fichier CSV, depuis son onglet Entretiens (icônes à droite de Rechercher). Une sauvegarde complète, documents compris, viendra plus tard.</p>
+              <p>Les entretiens de chaque voiture s'exportent et s'importent en fichier CSV, depuis son onglet Entretiens (icônes à droite de Rechercher).</p>
             </div>
           </div>
         </section>

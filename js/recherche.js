@@ -1,4 +1,4 @@
-/* Recherche dans toutes les données : voitures, entretiens, documents et relevés kilométriques.
+/* Recherche dans toutes les données : voitures, entretiens et relevés kilométriques.
    Majuscules et accents ignorés ; plusieurs mots = tous doivent être trouvés. */
 (function (EV) {
   'use strict';
@@ -35,7 +35,7 @@
   }
 
   // Un élément correspond si chaque mot se trouve dans son propre texte ou dans son contexte,
-  // et qu'au moins un mot est dans son propre texte (« wagner » seul ne liste pas toutes les factures).
+  // et qu'au moins un mot est dans son propre texte (« renault » seul ne liste pas tous les entretiens de la Renault).
   function correspond(mots, propre, contexte = '') {
     return mots.every((m) => propre.includes(m) || contexte.includes(m)) && mots.some((m) => propre.includes(m));
   }
@@ -44,12 +44,11 @@
     const mots = motsDe(requete);
     if (mots.length === 0) return null;
 
-    const [listeVoitures, listeEvenements, documents, releves, listeCategories] = await Promise.all([
-      voitures.liste(), stockage.tous('evenements'), stockage.tous('documents'), stockage.tous('releves'), stockage.tous('categories')
+    const [listeVoitures, listeEvenements, releves, listeCategories] = await Promise.all([
+      voitures.liste(), stockage.tous('evenements'), stockage.tous('releves'), stockage.tous('categories')
     ]);
     const nomsCategories = Object.fromEntries(listeCategories.map((c) => [c.id, c.nom]));
     const voituresParId = Object.fromEntries(listeVoitures.map((v) => [v.id, v]));
-    const evenementsParId = Object.fromEntries(listeEvenements.map((e) => [e.id, e]));
 
     const texteVoiture = {};
     listeVoitures.forEach((v) => {
@@ -68,10 +67,6 @@
       entretiens: listeEvenements
         .filter((ev) => voituresParId[ev.voitureId] && correspond(mots, texteEvenement(ev), texteVoiture[ev.voitureId]))
         .sort(parDate),
-      documents: documents
-        .filter((d) => evenementsParId[d.evenementId] && voituresParId[d.voitureId])
-        .filter((d) => correspond(mots, texte(d.nom), texteEvenement(evenementsParId[d.evenementId]) + texteVoiture[d.voitureId]))
-        .sort((a, b) => parDate(evenementsParId[a.evenementId], evenementsParId[b.evenementId])),
       // Les relevés tirés des entretiens sont déjà trouvés avec leur entretien.
       releves: releves
         .filter((r) => r.source !== 'evenement' && voituresParId[r.voitureId])
@@ -79,7 +74,7 @@
         .sort(parDate)
     };
     const total = Object.values(resultats).reduce((somme, liste) => somme + liste.length, 0);
-    return { mots, resultats, total, voituresParId, evenementsParId, nomsCategories };
+    return { mots, resultats, total, voituresParId, nomsCategories };
   }
 
   // Met en évidence les mots trouvés dans un texte, sans tenir compte des accents ni des majuscules.

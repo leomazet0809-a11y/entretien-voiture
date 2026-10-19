@@ -6,7 +6,7 @@
    Les données (Firestore) ont leur propre copie hors ligne, et la connexion Google passe directement : on n'y touche pas. */
 'use strict';
 
-const CACHE = 'entretien-voiture-v1';
+const CACHE = 'entretien-voiture-v2';
 const ATTENTE_RESEAU = 4000; // au-delà de 4 secondes sans réponse, la copie de l'appareil prend le relais
 
 const FICHIERS = [
@@ -31,7 +31,6 @@ const FICHIERS = [
   'js/voitures.js',
   'js/categories.js',
   'js/evenements.js',
-  'js/documents.js',
   'js/kilometrage.js',
   'js/graphique.js',
   'js/recherche.js',
@@ -48,7 +47,7 @@ const FICHIERS = [
   'js/app.js'
 ];
 
-const OUTILS_FIREBASE = ['app', 'auth', 'firestore', 'storage']
+const OUTILS_FIREBASE = ['app', 'auth', 'firestore']
   .map((nom) => `https://www.gstatic.com/firebasejs/10.12.2/firebase-${nom}-compat.js`);
 
 const POLICES = /^https:\/\/fonts\.(googleapis|gstatic)\.com\//;

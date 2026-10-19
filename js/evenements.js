@@ -1,5 +1,5 @@
 /* Règles sur les événements d'entretien.
-   Un événement = un passage : une date, un kilométrage, une société (champ `garage`), des documents,
+   Un événement = un passage : une date, un kilométrage, une société (champ `garage`),
    et une ou plusieurs lignes d'entretien (catégorie, détail, coût). */
 (function (EV) {
   'use strict';
@@ -121,18 +121,7 @@
     resumes,
     garages,
     lire: (id) => stockage.lire('evenements', id),
-    documents: (id) => stockage.documentsDeLEvenement(id),
-    // Documents d'une voiture, rangés par événement : { idEvenement: [documents] }.
-    documentsParEvenement: async (voitureId) => {
-      const parEvenement = {};
-      (await stockage.parVoiture('documents', voitureId)).forEach((document) => {
-        (parEvenement[document.evenementId] || (parEvenement[document.evenementId] = [])).push(document);
-      });
-      Object.values(parEvenement).forEach((liste) => liste.sort((a, b) => a.creeLe.localeCompare(b.creeLe)));
-      return parEvenement;
-    },
-    // `documents` : { ajouts, suppressions } (voir stockage.enregistrerEvenement).
-    enregistrer: (evenement, documents) => stockage.enregistrerEvenement(evenement, documents),
+    enregistrer: (evenement) => stockage.enregistrerEvenement(evenement),
     supprimer: (id) => stockage.supprimerEvenement(id)
   };
 })(window.EV = window.EV || {});
